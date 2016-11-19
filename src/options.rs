@@ -12,6 +12,7 @@ pub enum CompressionType {
 pub struct Options {
     pub block_size: usize,
     pub block_restart_interval: usize,
+    // Note: Compression is not implemented.
     pub compression_type: CompressionType,
 }
 

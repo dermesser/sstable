@@ -1,10 +1,14 @@
-use block::{Block, BlockIter};
+use block::{Block, BlockContents, BlockIter};
 use blockhandle::BlockHandle;
 use table_builder::{self, Footer};
 use iterator::{Comparator, SSIterator};
 
-use std::io::{Read, Seek, SeekFrom, Result};
+use integer_encoding::FixedInt;
+use crc::crc32;
+use crc::Hasher32;
+
 use std::cmp::Ordering;
+use std::io::{Error, ErrorKind, Read, Seek, SeekFrom, Result};
 
 /// Reads the table footer.
 fn read_footer<R: Read + Seek>(f: &mut R, size: usize) -> Result<Footer> {
@@ -26,12 +30,9 @@ fn read_bytes<R: Read + Seek>(f: &mut R, location: &BlockHandle) -> Result<Vec<u
 }
 
 /// Reads a block at location.
-fn read_block<R: Read + Seek, C: Comparator>(cmp: &C,
-                                             f: &mut R,
-                                             location: &BlockHandle)
-                                             -> Result<Block<C>> {
+fn read_block<R: Read + Seek>(f: &mut R, location: &BlockHandle) -> Result<BlockContents> {
     let buf = try!(read_bytes(f, location));
-    Ok(Block::new(buf, *cmp))
+    Ok(buf)
 }
 
 pub struct Table<R: Read + Seek, C: Comparator> {
@@ -47,7 +48,7 @@ impl<R: Read + Seek, C: Comparator> Table<R, C> {
     pub fn new(mut file: R, size: usize, cmp: C) -> Result<Table<R, C>> {
         let footer = try!(read_footer(&mut file, size));
 
-        let indexblock = try!(read_block(&cmp, &mut file, &footer.index));
+        let indexblock = Block::new(try!(read_block(&mut file, &footer.index)), cmp);
 
         Ok(Table {
             file: file,
@@ -57,8 +58,8 @@ impl<R: Read + Seek, C: Comparator> Table<R, C> {
         })
     }
 
-    fn read_block_(&mut self, location: &BlockHandle) -> Result<Block<C>> {
-        read_block(&self.cmp, &mut self.file, location)
+    fn read_block_(&mut self, location: &BlockHandle) -> Result<BlockContents> {
+        read_block(&mut self.file, location)
     }
 
     /// Returns the offset of the block that contains `key`.
@@ -77,13 +78,12 @@ impl<R: Read + Seek, C: Comparator> Table<R, C> {
 
     // Iterators read from the file; thus only one iterator can be borrowed (mutably) per scope
     fn iter<'a>(&'a mut self) -> TableIterator<'a, R, C> {
-        let mut iter = TableIterator {
+        let iter = TableIterator {
             current_block: self.indexblock.iter(), // just for filling in here
             index_block: self.indexblock.iter(),
             table: self,
             init: false,
         };
-        iter.skip_to_next_entry();
         iter
     }
 
@@ -112,24 +112,51 @@ pub struct TableIterator<'a, R: 'a + Read + Seek, C: 'a + Comparator> {
 }
 
 impl<'a, C: Comparator, R: Read + Seek> TableIterator<'a, R, C> {
-    // Skips to the entry referenced by the next entry in the index block.
-    // This is called once a block has run out of entries.
-    fn skip_to_next_entry(&mut self) -> bool {
+    /// Skips to the entry referenced by the next entry in the index block.
+    /// This is called once a block has run out of entries.
+    /// Returns Ok(false) if the end has been reached, returns Err(...) if it should be retried.
+    fn skip_to_next_entry(&mut self) -> Result<bool> {
         if let Some((_key, val)) = self.index_block.next() {
-            self.load_block(&val).is_ok()
+            let r = self.load_block(&val);
+
+            if let Err(e) = r { Err(e) } else { Ok(true) }
         } else {
-            false
+            Ok(false)
         }
     }
 
-    // Load the block at `handle` into `self.current_block`
+    /// Verifies the CRC checksum of a block.
+    fn verify_block(&self, block: &BlockContents) -> bool {
+        let payload = &block[0..block.len() - 4];
+        let checksum = &block[block.len() - 4..];
+        let checksum = u32::decode_fixed(checksum);
+
+        let mut digest = crc32::Digest::new(crc32::CASTAGNOLI);
+        digest.write(payload);
+
+        digest.sum32() == checksum
+    }
+
+    /// Load the block at `handle` into `self.current_block`
     fn load_block(&mut self, handle: &[u8]) -> Result<()> {
+        const TABLE_BLOCK_FOOTER_SIZE: usize = 5;
         let (new_block_handle, _) = BlockHandle::decode(handle);
 
-        let block = try!(self.table.read_block_(&new_block_handle));
-        self.current_block = block.iter();
+        // Also read checksum and compression! (5B)
+        let full_block_handle = BlockHandle::new(new_block_handle.offset(),
+                                                 new_block_handle.size() + TABLE_BLOCK_FOOTER_SIZE);
+        let mut full_block = try!(self.table.read_block_(&full_block_handle));
 
-        Ok(())
+        if !self.verify_block(&full_block) {
+            Err(Error::new(ErrorKind::InvalidData, "Bad block checksum!".to_string()))
+        } else {
+            // Truncate by 5, so the checksum and compression type are gone
+            full_block.resize(new_block_handle.size(), 0);
+            let block = Block::new(full_block, self.table.cmp);
+            self.current_block = block.iter();
+
+            Ok(())
+        }
     }
 }
 
@@ -137,14 +164,23 @@ impl<'a, C: Comparator, R: Read + Seek> Iterator for TableIterator<'a, R, C> {
     type Item = (Vec<u8>, Vec<u8>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.init = true;
+        if !self.init {
+            return match self.skip_to_next_entry() {
+                Ok(true) => {
+                    self.init = true;
+                    self.next()
+                }
+                Ok(false) => None,
+                Err(_) => self.next(),
+            };
+        }
         if let Some((key, val)) = self.current_block.next() {
             Some((key, val))
         } else {
-            if self.skip_to_next_entry() {
-                self.next()
-            } else {
-                None
+            match self.skip_to_next_entry() {
+                Ok(true) => self.next(),
+                Ok(false) => None,
+                Err(_) => self.next(),
             }
         }
     }
@@ -204,7 +240,9 @@ impl<'a, C: Comparator, R: Read + Seek> SSIterator for TableIterator<'a, R, C> {
     fn reset(&mut self) {
         self.index_block.reset();
         self.init = false;
-        self.skip_to_next_entry();
+
+        while let Err(_) = self.skip_to_next_entry() {
+        }
     }
 
     // This iterator is special in that it's valid even before the first call to next(). It behaves
@@ -243,7 +281,7 @@ mod tests {
         let mut d = Vec::with_capacity(512);
         let mut opt = Options::default();
         opt.block_restart_interval = 2;
-        opt.block_size = 64;
+        opt.block_size = 32;
 
         {
             let mut b = TableBuilder::new(opt, StandardComparator, &mut d);
@@ -275,6 +313,26 @@ mod tests {
                        (k.as_ref(), v.as_ref()));
             i += 1;
         }
+    }
+
+    #[test]
+    fn test_table_data_corruption() {
+        let (mut src, size) = build_table();
+
+        // Mess with first block
+        src[28] += 1;
+
+        let mut table = Table::new(Cursor::new(&src as &[u8]), size, StandardComparator).unwrap();
+        let mut iter = table.iter();
+
+        // defective blocks are skipped, i.e. we should start with the second block
+
+        assert!(iter.next().is_some());
+        assert_eq!(iter.current(),
+                   Some(("bsr".as_bytes().to_vec(), "a00".as_bytes().to_vec())));
+        assert!(iter.next().is_some());
+        assert_eq!(iter.current(),
+                   Some(("xyz".as_bytes().to_vec(), "xxx".as_bytes().to_vec())));
     }
 
     #[test]
