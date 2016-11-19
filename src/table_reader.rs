@@ -1,7 +1,7 @@
 use block::{Block, BlockContents, BlockIter};
 use blockhandle::BlockHandle;
 use table_builder::{self, Footer};
-use iterator::{Comparator, SSIterator};
+use iterator::{Comparator, StandardComparator, SSIterator};
 
 use integer_encoding::FixedInt;
 use crc::crc32;
@@ -44,7 +44,16 @@ pub struct Table<R: Read + Seek, C: Comparator> {
     indexblock: Block<C>,
 }
 
+impl<R: Read + Seek> Table<R, StandardComparator> {
+    /// Open a table for reading.
+    pub fn new_defaults(file: R, size: usize) -> Result<Table<R, StandardComparator>> {
+        Table::new(file, size, StandardComparator)
+    }
+}
+
 impl<R: Read + Seek, C: Comparator> Table<R, C> {
+    /// Open a table for reading. Note: The comparator must be the same that was chosen when
+    /// building the table.
     pub fn new(mut file: R, size: usize, cmp: C) -> Result<Table<R, C>> {
         let footer = try!(read_footer(&mut file, size));
 
@@ -87,6 +96,10 @@ impl<R: Read + Seek, C: Comparator> Table<R, C> {
         iter
     }
 
+    /// Retrieve an entry from the table.
+    ///
+    /// Note: As this doesn't keep state, using a TableIterator and seek() may be more efficient
+    /// when retrieving several entries from the same underlying block.
     pub fn get(&mut self, key: &[u8]) -> Option<Vec<u8>> {
         let mut iter = self.iter();
 

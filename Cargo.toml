@@ -1,7 +1,11 @@
 [package]
 name = "sstable"
+description = "Sorted String Tables, an on-disk format for storing immutable maps consisting of string,string pairs, and retrieving values by key efficiently."
 version = "0.1.0"
-authors = ["Lewin Bormann <lewin@lewin-bormann.info>"]
+readme = "README.md"
+keywords = ["sstable", "database"]
+repository = "https://bitbucket.org/dermesser/sstable"
+authors = ["Lewin Bormann <lbo@spheniscida.de>"]
 license = "MIT"
 
 [dependencies]

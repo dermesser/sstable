@@ -1,7 +1,7 @@
 use block::{BlockBuilder, BlockContents};
 use blockhandle::BlockHandle;
 use options::{CompressionType, Options};
-use iterator::Comparator;
+use iterator::{Comparator, StandardComparator};
 
 use std::io::Write;
 use std::cmp::Ordering;
@@ -98,7 +98,17 @@ pub struct TableBuilder<C: Comparator, Dst: Write> {
     index_block: Option<BlockBuilder<C>>,
 }
 
+impl<Dst: Write> TableBuilder<StandardComparator, Dst> {
+
+    /// Create a new TableBuilder with default comparator and options.
+    pub fn new_defaults(dst: Dst) -> TableBuilder<StandardComparator, Dst> {
+        TableBuilder::new(Options::default(), StandardComparator, dst)
+    }
+}
+
 impl<C: Comparator, Dst: Write> TableBuilder<C, Dst> {
+
+    /// Create a new TableBuilder.
     pub fn new(opt: Options, cmp: C, dst: Dst) -> TableBuilder<C, Dst> {
         TableBuilder {
             o: opt,
@@ -112,6 +122,7 @@ impl<C: Comparator, Dst: Write> TableBuilder<C, Dst> {
         }
     }
 
+    /// Returns how many entries have been written.
     pub fn entries(&self) -> usize {
         self.num_entries
     }
@@ -178,6 +189,8 @@ impl<C: Comparator, Dst: Write> TableBuilder<C, Dst> {
         handle
     }
 
+    /// Finish building this table. This *must* be called at the end, otherwise not all data may
+    /// land on disk.
     pub fn finish(mut self) {
         assert!(self.data_block.is_some());
         let ctype = self.o.compression_type;
