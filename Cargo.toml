@@ -1,0 +1,9 @@
+[package]
+name = "sstable"
+version = "0.1.0"
+authors = ["Lewin Bormann <lewin@lewin-bormann.info>"]
+license = "MIT"
+
+[dependencies]
+crc = "1.2"
+integer-encoding = "1.0"
