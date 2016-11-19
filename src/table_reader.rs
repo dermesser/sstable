@@ -101,8 +101,7 @@ impl<R: Read + Seek, C: Comparator> Table<R, C> {
     }
 }
 
-/// This iterator is a "TwoLevelIterator"; it uses an index block in order to get an offset hint
-/// into the data blocks.
+/// Iterator over a Table.
 pub struct TableIterator<'a, R: 'a + Read + Seek, C: 'a + Comparator> {
     table: &'a mut Table<R, C>,
     current_block: BlockIter<C>,
@@ -114,7 +113,8 @@ pub struct TableIterator<'a, R: 'a + Read + Seek, C: 'a + Comparator> {
 impl<'a, C: Comparator, R: Read + Seek> TableIterator<'a, R, C> {
     /// Skips to the entry referenced by the next entry in the index block.
     /// This is called once a block has run out of entries.
-    /// Returns Ok(false) if the end has been reached, returns Err(...) if it should be retried.
+    /// Returns Ok(false) if the end has been reached, returns Err(...) if it should be retried
+    /// (e.g., because there's a corrupted block)
     fn skip_to_next_entry(&mut self) -> Result<bool> {
         if let Some((_key, val)) = self.index_block.next() {
             let r = self.load_block(&val);
