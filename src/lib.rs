@@ -10,8 +10,3 @@ pub mod options;
 pub mod table_builder;
 pub mod table_reader;
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {}
-}
