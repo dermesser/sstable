@@ -3,7 +3,6 @@ extern crate integer_encoding;
 
 mod block;
 mod blockhandle;
-mod key_types;
 
 pub mod iterator;
 pub mod options;
