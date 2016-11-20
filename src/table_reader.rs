@@ -86,7 +86,7 @@ impl<R: Read + Seek, C: Comparator> Table<R, C> {
     }
 
     // Iterators read from the file; thus only one iterator can be borrowed (mutably) per scope
-    fn iter<'a>(&'a mut self) -> TableIterator<'a, R, C> {
+    pub fn iter<'a>(&'a mut self) -> TableIterator<'a, R, C> {
         let iter = TableIterator {
             current_block: self.indexblock.iter(), // just for filling in here
             index_block: self.indexblock.iter(),
