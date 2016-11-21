@@ -271,7 +271,7 @@ impl<'a, C: Comparator, R: Read + Seek> SSIterator for TableIterator<'a, R, C> {
 
 #[cfg(test)]
 mod tests {
-    use options::Options;
+    use options::BuildOptions;
     use table_builder::TableBuilder;
     use iterator::{StandardComparator, SSIterator};
 
@@ -292,7 +292,7 @@ mod tests {
 
     fn build_table() -> (Vec<u8>, usize) {
         let mut d = Vec::with_capacity(512);
-        let mut opt = Options::default();
+        let mut opt = BuildOptions::default();
         opt.block_restart_interval = 2;
         opt.block_size = 32;
 

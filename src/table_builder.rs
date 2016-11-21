@@ -1,6 +1,6 @@
 use block::{BlockBuilder, BlockContents};
 use blockhandle::BlockHandle;
-use options::{CompressionType, Options};
+use options::{CompressionType, BuildOptions};
 use iterator::{Comparator, StandardComparator};
 
 use std::io::Write;
@@ -86,7 +86,7 @@ impl Footer {
 /// 0xdb4775248b80fb57.
 
 pub struct TableBuilder<C: Comparator, Dst: Write> {
-    o: Options,
+    o: BuildOptions,
     cmp: C,
     dst: Dst,
 
@@ -100,16 +100,16 @@ pub struct TableBuilder<C: Comparator, Dst: Write> {
 
 impl<Dst: Write> TableBuilder<StandardComparator, Dst> {
 
-    /// Create a new TableBuilder with default comparator and options.
+    /// Create a new TableBuilder with default comparator and BuildOptions.
     pub fn new_defaults(dst: Dst) -> TableBuilder<StandardComparator, Dst> {
-        TableBuilder::new(Options::default(), StandardComparator, dst)
+        TableBuilder::new(BuildOptions::default(), StandardComparator, dst)
     }
 }
 
 impl<C: Comparator, Dst: Write> TableBuilder<C, Dst> {
 
     /// Create a new TableBuilder.
-    pub fn new(opt: Options, cmp: C, dst: Dst) -> TableBuilder<C, Dst> {
+    pub fn new(opt: BuildOptions, cmp: C, dst: Dst) -> TableBuilder<C, Dst> {
         TableBuilder {
             o: opt,
             cmp: cmp,
@@ -219,7 +219,7 @@ mod tests {
     use super::{find_shortest_sep, Footer, TableBuilder};
     use iterator::StandardComparator;
     use blockhandle::BlockHandle;
-    use options::Options;
+    use options::BuildOptions;
 
     #[test]
     fn test_shortest_sep() {
@@ -254,7 +254,7 @@ mod tests {
     #[test]
     fn test_table_builder() {
         let mut d = Vec::with_capacity(512);
-        let mut opt = Options::default();
+        let mut opt = BuildOptions::default();
         opt.block_restart_interval = 3;
         let mut b = TableBuilder::new(opt, StandardComparator, &mut d);
 
@@ -271,7 +271,7 @@ mod tests {
     #[should_panic]
     fn test_bad_input() {
         let mut d = Vec::with_capacity(512);
-        let mut opt = Options::default();
+        let mut opt = BuildOptions::default();
         opt.block_restart_interval = 3;
         let mut b = TableBuilder::new(opt, StandardComparator, &mut d);
 

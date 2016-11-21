@@ -11,7 +11,7 @@ pub mod table_reader;
 
 pub use iterator::StandardComparator;
 pub use iterator::SSIterator;
-pub use options::Options;
+pub use options::{BuildOptions, ReadOptions};
 
 pub use table_builder::TableBuilder;
 pub use table_reader::{Table, TableIterator};

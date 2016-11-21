@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use std::rc::Rc;
 
-use options::Options;
+use options::BuildOptions;
 use iterator::{SSIterator, Comparator};
 
 use integer_encoding::FixedInt;
@@ -249,7 +249,7 @@ impl<C: Comparator> SSIterator for BlockIter<C> {
 }
 
 pub struct BlockBuilder<C: Comparator> {
-    opt: Options,
+    opt: BuildOptions,
     cmp: C,
     buffer: Vec<u8>,
     restarts: Vec<u32>,
@@ -259,7 +259,7 @@ pub struct BlockBuilder<C: Comparator> {
 }
 
 impl<C: Comparator> BlockBuilder<C> {
-    pub fn new(o: Options, cmp: C) -> BlockBuilder<C> {
+    pub fn new(o: BuildOptions, cmp: C) -> BlockBuilder<C> {
         let mut restarts = vec![0];
         restarts.reserve(1023);
 
@@ -375,7 +375,7 @@ mod tests {
 
     #[test]
     fn test_block_builder() {
-        let mut o = Options::default();
+        let mut o = BuildOptions::default();
         o.block_restart_interval = 3;
 
         let mut builder = BlockBuilder::new(o, StandardComparator);
@@ -393,7 +393,7 @@ mod tests {
 
     #[test]
     fn test_block_builder_reset() {
-        let o = Options::default();
+        let o = BuildOptions::default();
 
         let mut builder = BlockBuilder::new(o, StandardComparator);
 
@@ -406,7 +406,7 @@ mod tests {
 
     #[test]
     fn test_block_empty() {
-        let mut o = Options::default();
+        let mut o = BuildOptions::default();
         o.block_restart_interval = 16;
         let builder = BlockBuilder::new(o, StandardComparator);
 
@@ -424,7 +424,7 @@ mod tests {
     #[test]
     fn test_block_build_iterate() {
         let data = get_data();
-        let mut builder = BlockBuilder::new(Options::default(), StandardComparator);
+        let mut builder = BlockBuilder::new(BuildOptions::default(), StandardComparator);
 
         for &(k, v) in data.iter() {
             builder.add(k, v);
@@ -455,7 +455,7 @@ mod tests {
 
     #[test]
     fn test_block_iterate_reverse() {
-        let mut o = Options::default();
+        let mut o = BuildOptions::default();
         o.block_restart_interval = 3;
         let data = get_data();
         let mut builder = BlockBuilder::new(o, StandardComparator);
@@ -483,7 +483,7 @@ mod tests {
 
     #[test]
     fn test_block_seek() {
-        let mut o = Options::default();
+        let mut o = BuildOptions::default();
         o.block_restart_interval = 3;
 
         let data = get_data();
@@ -515,7 +515,7 @@ mod tests {
 
     #[test]
     fn test_block_seek_to_last() {
-        let mut o = Options::default();
+        let mut o = BuildOptions::default();
 
         // Test with different number of restarts
         for block_restart_interval in vec![2, 6, 10] {
