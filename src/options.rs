@@ -28,7 +28,7 @@ impl Default for BuildOptions {
 
 #[derive(Clone, Copy)]
 pub struct ReadOptions {
-    pub skip_bad_blocks: bool
+    pub skip_bad_blocks: bool,
 }
 
 impl Default for ReadOptions {

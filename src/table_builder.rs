@@ -99,17 +99,15 @@ pub struct TableBuilder<C: Comparator, Dst: Write> {
 }
 
 impl<Dst: Write> TableBuilder<StandardComparator, Dst> {
-
     /// Create a new TableBuilder with default comparator and BuildOptions.
     pub fn new_defaults(dst: Dst) -> TableBuilder<StandardComparator, Dst> {
-        TableBuilder::new(BuildOptions::default(), StandardComparator, dst)
+        TableBuilder::new(dst, BuildOptions::default(), StandardComparator)
     }
 }
 
 impl<C: Comparator, Dst: Write> TableBuilder<C, Dst> {
-
     /// Create a new TableBuilder.
-    pub fn new(opt: BuildOptions, cmp: C, dst: Dst) -> TableBuilder<C, Dst> {
+    pub fn new(dst: Dst, opt: BuildOptions, cmp: C) -> TableBuilder<C, Dst> {
         TableBuilder {
             o: opt,
             cmp: cmp,
@@ -256,7 +254,7 @@ mod tests {
         let mut d = Vec::with_capacity(512);
         let mut opt = BuildOptions::default();
         opt.block_restart_interval = 3;
-        let mut b = TableBuilder::new(opt, StandardComparator, &mut d);
+        let mut b = TableBuilder::new(&mut d, opt, StandardComparator);
 
         let data = vec![("abc", "def"), ("abd", "dee"), ("bcd", "asa"), ("bsr", "a00")];
 
@@ -273,7 +271,7 @@ mod tests {
         let mut d = Vec::with_capacity(512);
         let mut opt = BuildOptions::default();
         opt.block_restart_interval = 3;
-        let mut b = TableBuilder::new(opt, StandardComparator, &mut d);
+        let mut b = TableBuilder::new(&mut d, opt, StandardComparator);
 
         // Test two equal consecutive keys
         let data = vec![("abc", "def"), ("abc", "dee"), ("bcd", "asa"), ("bsr", "a00")];

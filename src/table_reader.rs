@@ -2,6 +2,7 @@ use block::{Block, BlockContents, BlockIter};
 use blockhandle::BlockHandle;
 use table_builder::{self, Footer};
 use iterator::{Comparator, StandardComparator, SSIterator};
+use options::ReadOptions;
 
 use integer_encoding::FixedInt;
 use crc::crc32;
@@ -39,6 +40,7 @@ pub struct Table<R: Read + Seek, C: Comparator> {
     file: R,
     file_size: usize,
 
+    opt: ReadOptions,
     cmp: C,
 
     indexblock: Block<C>,
@@ -47,14 +49,14 @@ pub struct Table<R: Read + Seek, C: Comparator> {
 impl<R: Read + Seek> Table<R, StandardComparator> {
     /// Open a table for reading.
     pub fn new_defaults(file: R, size: usize) -> Result<Table<R, StandardComparator>> {
-        Table::new(file, size, StandardComparator)
+        Table::new(file, size, ReadOptions::default(), StandardComparator)
     }
 }
 
 impl<R: Read + Seek, C: Comparator> Table<R, C> {
     /// Open a table for reading. Note: The comparator must be the same that was chosen when
     /// building the table.
-    pub fn new(mut file: R, size: usize, cmp: C) -> Result<Table<R, C>> {
+    pub fn new(mut file: R, size: usize, opt: ReadOptions, cmp: C) -> Result<Table<R, C>> {
         let footer = try!(read_footer(&mut file, size));
 
         let indexblock = Block::new(try!(read_block(&mut file, &footer.index)), cmp);
@@ -62,6 +64,7 @@ impl<R: Read + Seek, C: Comparator> Table<R, C> {
         Ok(Table {
             file: file,
             file_size: size,
+            opt: opt,
             cmp: cmp,
             indexblock: indexblock,
         })
@@ -160,7 +163,7 @@ impl<'a, C: Comparator, R: Read + Seek> TableIterator<'a, R, C> {
                                                  new_block_handle.size() + TABLE_BLOCK_FOOTER_SIZE);
         let mut full_block = try!(self.table.read_block_(&full_block_handle));
 
-        if !self.verify_block(&full_block) {
+        if !self.verify_block(&full_block) && self.table.opt.skip_bad_blocks {
             Err(Error::new(ErrorKind::InvalidData, "Bad block checksum!".to_string()))
         } else {
             // Truncate by 5, so the checksum and compression type are gone
@@ -271,7 +274,7 @@ impl<'a, C: Comparator, R: Read + Seek> SSIterator for TableIterator<'a, R, C> {
 
 #[cfg(test)]
 mod tests {
-    use options::BuildOptions;
+    use options::{BuildOptions, ReadOptions};
     use table_builder::TableBuilder;
     use iterator::{StandardComparator, SSIterator};
 
@@ -297,7 +300,7 @@ mod tests {
         opt.block_size = 32;
 
         {
-            let mut b = TableBuilder::new(opt, StandardComparator, &mut d);
+            let mut b = TableBuilder::new(&mut d, opt, StandardComparator);
             let data = build_data();
 
             for &(k, v) in data.iter() {
@@ -317,7 +320,11 @@ mod tests {
         let (src, size) = build_table();
         let data = build_data();
 
-        let mut table = Table::new(Cursor::new(&src as &[u8]), size, StandardComparator).unwrap();
+        let mut table = Table::new(Cursor::new(&src as &[u8]),
+                                   size,
+                                   ReadOptions::default(),
+                                   StandardComparator)
+            .unwrap();
         let iter = table.iter();
         let mut i = 0;
 
@@ -335,7 +342,11 @@ mod tests {
         // Mess with first block
         src[28] += 1;
 
-        let mut table = Table::new(Cursor::new(&src as &[u8]), size, StandardComparator).unwrap();
+        let mut table = Table::new(Cursor::new(&src as &[u8]),
+                                   size,
+                                   ReadOptions::default(),
+                                   StandardComparator)
+            .unwrap();
         let mut iter = table.iter();
 
         // defective blocks are skipped, i.e. we should start with the second block
@@ -346,13 +357,44 @@ mod tests {
         assert!(iter.next().is_some());
         assert_eq!(iter.current(),
                    Some(("xyz".as_bytes().to_vec(), "xxx".as_bytes().to_vec())));
+        assert!(iter.prev().is_some());
+        // corrupted blocks are skipped also when reading the other way round
+        assert!(iter.prev().is_none());
+    }
+
+    #[test]
+    fn test_table_data_corruption_regardless() {
+        let mut opt = ReadOptions::default();
+        opt.skip_bad_blocks = false;
+
+        let (mut src, size) = build_table();
+
+        // Mess with first block
+        src[28] += 1;
+
+        let mut table = Table::new(Cursor::new(&src as &[u8]), size, opt, StandardComparator)
+            .unwrap();
+        let mut iter = table.iter();
+
+        // defective blocks are NOT skipped!
+
+        assert!(iter.next().is_some());
+        assert_eq!(iter.current(),
+                   Some(("abc".as_bytes().to_vec(), "def".as_bytes().to_vec())));
+        assert!(iter.next().is_some());
+        assert_eq!(iter.current(),
+                   Some(("abd".as_bytes().to_vec(), "dee".as_bytes().to_vec())));
     }
 
     #[test]
     fn test_table_get() {
         let (src, size) = build_table();
 
-        let mut table = Table::new(Cursor::new(&src as &[u8]), size, StandardComparator).unwrap();
+        let mut table = Table::new(Cursor::new(&src as &[u8]),
+                                   size,
+                                   ReadOptions::default(),
+                                   StandardComparator)
+            .unwrap();
 
         assert_eq!(table.get("abc".as_bytes()), Some("def".as_bytes().to_vec()));
         assert_eq!(table.get("zzz".as_bytes()), Some("111".as_bytes().to_vec()));
@@ -364,7 +406,11 @@ mod tests {
     fn test_table_iterator_state_behavior() {
         let (src, size) = build_table();
 
-        let mut table = Table::new(Cursor::new(&src as &[u8]), size, StandardComparator).unwrap();
+        let mut table = Table::new(Cursor::new(&src as &[u8]),
+                                   size,
+                                   ReadOptions::default(),
+                                   StandardComparator)
+            .unwrap();
         let mut iter = table.iter();
 
         // behavior test
@@ -391,7 +437,11 @@ mod tests {
         let (src, size) = build_table();
         let data = build_data();
 
-        let mut table = Table::new(Cursor::new(&src as &[u8]), size, StandardComparator).unwrap();
+        let mut table = Table::new(Cursor::new(&src as &[u8]),
+                                   size,
+                                   ReadOptions::default(),
+                                   StandardComparator)
+            .unwrap();
         let mut iter = table.iter();
         let mut i = 0;
 
@@ -422,7 +472,11 @@ mod tests {
     fn test_table_iterator_seek() {
         let (src, size) = build_table();
 
-        let mut table = Table::new(Cursor::new(&src as &[u8]), size, StandardComparator).unwrap();
+        let mut table = Table::new(Cursor::new(&src as &[u8]),
+                                   size,
+                                   ReadOptions::default(),
+                                   StandardComparator)
+            .unwrap();
         let mut iter = table.iter();
 
         iter.seek("bcd".as_bytes());
