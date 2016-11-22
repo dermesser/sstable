@@ -78,13 +78,15 @@ impl Footer {
 
 /// A table consists of DATA BLOCKs, an INDEX BLOCK and a FOOTER.
 ///
-/// DATA BLOCKs, INDEX BLOCK BLOCK are built using the code in
-/// the `block` module.
+/// DATA BLOCKs, INDEX BLOCKs, and BLOCKs are built using the code in the `block` module.
 ///
-/// The footer is a pointer pointing to
-/// the index block, padding to fill up to 40 B and at the end the 8B magic number
-/// 0xdb4775248b80fb57.
-
+/// DATA BLOCKs contain the actual data; INDEX BLOCKS contain one entry per block, where the key is
+/// a string after the last key of a block, and the value is a encoded BlockHandle pointing to that
+/// block.
+///
+/// The footer is a pointer pointing to the index block, padding to fill up to 40 B and at the end
+/// the 8B magic number 0xdb4775248b80fb57.
+///
 pub struct TableBuilder<C: Comparator, Dst: Write> {
     o: BuildOptions,
     cmp: C,
