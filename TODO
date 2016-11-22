@@ -1,1 +1,2 @@
 * Implement per-block compression using `snap` (http://burntsushi.net/rustdoc/snap/)
+* Implement helpers to easily open files for reading/writing
