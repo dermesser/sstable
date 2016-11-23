@@ -3,7 +3,9 @@ use blockhandle::BlockHandle;
 use options::{CompressionType, BuildOptions};
 use iterator::{Comparator, StandardComparator};
 
-use std::io::Write;
+use std::io::{Result, Write};
+use std::fs::{File, OpenOptions};
+use std::path::Path;
 use std::cmp::Ordering;
 
 use crc::crc32;
@@ -104,6 +106,15 @@ impl<Dst: Write> TableBuilder<StandardComparator, Dst> {
     /// Create a new TableBuilder with default comparator and BuildOptions.
     pub fn new_defaults(dst: Dst) -> TableBuilder<StandardComparator, Dst> {
         TableBuilder::new(dst, BuildOptions::default(), StandardComparator)
+    }
+}
+
+impl TableBuilder<StandardComparator, File> {
+    /// Open/create a file for writing a table.
+    /// This will truncate the file, if it exists.
+    pub fn new_to_file(file: &Path) -> Result<TableBuilder<StandardComparator, File>> {
+        let f = try!(OpenOptions::new().create(true).write(true).truncate(true).open(file));
+        Ok(TableBuilder::new(f, BuildOptions::default(), StandardComparator))
     }
 }
 

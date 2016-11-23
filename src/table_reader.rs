@@ -10,6 +10,8 @@ use crc::Hasher32;
 
 use std::cmp::Ordering;
 use std::io::{Error, ErrorKind, Read, Seek, SeekFrom, Result};
+use std::fs::{File, OpenOptions};
+use std::path::Path;
 
 /// Reads the table footer.
 fn read_footer<R: Read + Seek>(f: &mut R, size: usize) -> Result<Footer> {
@@ -50,6 +52,16 @@ impl<R: Read + Seek> Table<R, StandardComparator> {
     /// Open a table for reading.
     pub fn new_defaults(file: R, size: usize) -> Result<Table<R, StandardComparator>> {
         Table::new(file, size, ReadOptions::default(), StandardComparator)
+    }
+}
+
+impl Table<File, StandardComparator> {
+    /// Directly open a file for reading.
+    pub fn new_from_file(file: &Path) -> Result<Table<File, StandardComparator>> {
+        let f = try!(OpenOptions::new().read(true).open(file));
+        let len = try!(f.metadata()).len() as usize;
+
+        Table::new(f, len, ReadOptions::default(), StandardComparator)
     }
 }
 
