@@ -17,6 +17,9 @@ pub const FULL_FOOTER_LENGTH: usize = FOOTER_LENGTH + 8;
 pub const MAGIC_FOOTER_NUMBER: u64 = 0xdb4775248b80fb57;
 pub const MAGIC_FOOTER_ENCODED: [u8; 8] = [0x57, 0xfb, 0x80, 0x8b, 0x24, 0x75, 0x47, 0xdb];
 
+pub const TABLE_BLOCK_COMPRESS_LEN: usize = 1;
+pub const TABLE_BLOCK_CKSUM_LEN: usize = 4;
+
 fn find_shortest_sep<C: Comparator>(c: &C, lo: &[u8], hi: &[u8]) -> Vec<u8> {
     let min;
 

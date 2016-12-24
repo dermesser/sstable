@@ -49,8 +49,7 @@ impl<C: Comparator> Block<C> {
         }
     }
 
-    #[allow(dead_code)]
-    fn contents(&self) -> Rc<BlockContents> {
+    pub fn contents(&self) -> Rc<BlockContents> {
         self.block.clone()
     }
 
