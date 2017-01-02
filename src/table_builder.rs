@@ -85,8 +85,9 @@ impl Footer {
 ///
 /// DATA BLOCKs, INDEX BLOCKs, and BLOCKs are built using the code in the `block` module.
 ///
-/// DATA BLOCKs contain the actual data; INDEX BLOCKS contain one entry per block, where the key is
-/// a string after the last key of a block, and the value is a encoded BlockHandle pointing to that
+/// DATA BLOCKs contain the actual data, and a footer of [4B crc32; 1B compression];
+/// INDEX BLOCKS contain one entry per block, where the key is a string after the
+/// last key of a block, and the value is a encoded BlockHandle pointing to that
 /// block.
 ///
 /// The footer is a pointer pointing to the index block, padding to fill up to 40 B and at the end
@@ -159,7 +160,7 @@ impl<C: Comparator, Dst: Write> TableBuilder<C, Dst> {
     }
 
     /// Writes an index entry for the current data_block where `next_key` is the first key of the
-    /// next block.
+    /// next block. Then, write the actual block to disk.
     fn write_data_block(&mut self, next_key: &[u8]) {
         assert!(self.data_block.is_some());
 
