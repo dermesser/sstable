@@ -1,16 +1,14 @@
 use block::{Block, BlockIter};
 use blockhandle::BlockHandle;
-use filter::{BoxedFilterPolicy, InternalFilterPolicy};
+use filter::BoxedFilterPolicy;
 use filter_block::FilterBlockReader;
 use key_types::InternalKey;
-use cmp::InternalKeyCmp;
 use options::{self, CompressionType, Options};
 use table_builder::{self, Footer};
 use iterator::SSIterator;
 
 use std::cmp::Ordering;
 use std::io::{self, Read, Seek, SeekFrom, Result};
-use std::sync::Arc;
 
 use integer_encoding::FixedInt;
 use crc::crc32::{self, Hasher32};
@@ -86,8 +84,8 @@ pub struct Table<R: Read + Seek> {
 }
 
 impl<R: Read + Seek> Table<R> {
-    /// Creates a new table reader operating on unformatted keys (i.e., UserKey).
-    fn new_raw(opt: Options, mut file: R, size: usize, fp: BoxedFilterPolicy) -> Result<Table<R>> {
+    /// Creates a new table reader.
+    pub fn new(opt: Options, mut file: R, size: usize, fp: BoxedFilterPolicy) -> Result<Table<R>> {
         let footer = try!(read_footer(&mut file, size));
 
         let indexblock = try!(TableBlock::read_block(opt.clone(), &mut file, &footer.index));
@@ -125,15 +123,6 @@ impl<R: Read + Seek> Table<R> {
             filters: filter_block_reader,
             indexblock: indexblock.block,
         })
-    }
-
-    /// Creates a new table reader operating on internal keys (i.e., InternalKey). This means that
-    /// a different comparator (internal_key_cmp) and a different filter policy
-    /// (InternalFilterPolicy) are used.
-    pub fn new(mut opt: Options, file: R, size: usize, fp: BoxedFilterPolicy) -> Result<Table<R>> {
-        opt.cmp = Arc::new(Box::new(InternalKeyCmp(opt.cmp.clone())));
-        let t = try!(Table::new_raw(opt, file, size, InternalFilterPolicy::new(fp)));
-        Ok(t)
     }
 
     fn read_block(&mut self, location: &BlockHandle) -> Result<TableBlock> {
@@ -334,11 +323,9 @@ impl<'a, R: Read + Seek> SSIterator for TableIterator<'a, R> {
 #[cfg(test)]
 mod tests {
     use filter::BloomPolicy;
-    use filter::InternalFilterPolicy;
     use options::Options;
     use table_builder::TableBuilder;
     use iterator::SSIterator;
-    use key_types::LookupKey;
 
     use std::io::Cursor;
 
@@ -366,45 +353,11 @@ mod tests {
 
         {
             // Uses the standard comparator in opt.
-            let mut b = TableBuilder::new_raw(opt, &mut d, BloomPolicy::new(4));
+            let mut b = TableBuilder::new(opt, &mut d, BloomPolicy::new(4));
             let data = build_data();
 
             for &(k, v) in data.iter() {
                 b.add(k.as_bytes(), v.as_bytes());
-            }
-
-            b.finish();
-
-        }
-
-        let size = d.len();
-
-        (d, size)
-    }
-
-    // Build a table containing keys in InternalKey format.
-    fn build_internal_table() -> (Vec<u8>, usize) {
-        let mut d = Vec::with_capacity(512);
-        let mut opt = Options::default();
-        opt.block_restart_interval = 1;
-        opt.block_size = 32;
-
-        let mut i = 0 as u64;
-        let data: Vec<(Vec<u8>, &'static str)> = build_data()
-            .into_iter()
-            .map(|(k, v)| {
-                i += 1;
-                (LookupKey::new(k.as_bytes(), i).internal_key().to_vec(), v)
-            })
-            .collect();
-
-        {
-            // Uses InternalKeyCmp
-            let mut b =
-                TableBuilder::new(opt, &mut d, InternalFilterPolicy::new(BloomPolicy::new(4)));
-
-            for &(ref k, ref v) in data.iter() {
-                b.add(k.as_slice(), v.as_bytes());
             }
 
             b.finish();
@@ -423,7 +376,7 @@ mod tests {
 
         src[10] += 1;
 
-        let mut table = Table::new_raw(Options::default(),
+        let mut table = Table::new(Options::default(),
                                        Cursor::new(&src as &[u8]),
                                        size,
                                        BloomPolicy::new(4))
@@ -456,7 +409,7 @@ mod tests {
         let (src, size) = build_table();
         let data = build_data();
 
-        let mut table = Table::new_raw(Options::default(),
+        let mut table = Table::new(Options::default(),
                                        Cursor::new(&src as &[u8]),
                                        size,
                                        BloomPolicy::new(4))
@@ -492,7 +445,7 @@ mod tests {
     fn test_table_iterator_filter() {
         let (src, size) = build_table();
 
-        let mut table = Table::new_raw(Options::default(),
+        let mut table = Table::new(Options::default(),
                                        Cursor::new(&src as &[u8]),
                                        size,
                                        BloomPolicy::new(4))
@@ -515,7 +468,7 @@ mod tests {
     fn test_table_iterator_state_behavior() {
         let (src, size) = build_table();
 
-        let mut table = Table::new_raw(Options::default(),
+        let mut table = Table::new(Options::default(),
                                        Cursor::new(&src as &[u8]),
                                        size,
                                        BloomPolicy::new(4))
@@ -549,7 +502,7 @@ mod tests {
         let (src, size) = build_table();
         let data = build_data();
 
-        let mut table = Table::new_raw(Options::default(),
+        let mut table = Table::new(Options::default(),
                                        Cursor::new(&src as &[u8]),
                                        size,
                                        BloomPolicy::new(4))
@@ -586,7 +539,7 @@ mod tests {
     fn test_table_iterator_seek() {
         let (src, size) = build_table();
 
-        let mut table = Table::new_raw(Options::default(),
+        let mut table = Table::new(Options::default(),
                                        Cursor::new(&src as &[u8]),
                                        size,
                                        BloomPolicy::new(4))
@@ -607,7 +560,7 @@ mod tests {
     fn test_table_get() {
         let (src, size) = build_table();
 
-        let mut table = Table::new_raw(Options::default(),
+        let mut table = Table::new(Options::default(),
                                        Cursor::new(&src as &[u8]),
                                        size,
                                        BloomPolicy::new(4))
@@ -619,44 +572,5 @@ mod tests {
         assert_eq!(table.get("bcd".as_bytes()), Some("asa".as_bytes().to_vec()));
         assert_eq!(table.get("zzz".as_bytes()), Some("111".as_bytes().to_vec()));
         assert!(table.get("zz1".as_bytes()).is_none());
-    }
-
-    // This test verifies that the table and filters work with internal keys. This means:
-    // The table contains keys in InternalKey format and it uses a filter wrapped by
-    // InternalFilterPolicy.
-    // All the other tests use raw keys that don't have any internal structure; this is fine in
-    // general, but here we want to see that the other infrastructure works too.
-    #[test]
-    fn test_table_internal_keys() {
-        use key_types::LookupKey;
-
-        let (src, size) = build_internal_table();
-
-        let mut table = Table::new(Options::default(),
-                                   Cursor::new(&src as &[u8]),
-                                   size,
-                                   BloomPolicy::new(4))
-            .unwrap();
-        let filter_reader = table.filters.clone().unwrap();
-
-        // Check that we're actually using internal keys
-        for (ref k, _) in table.iter() {
-            assert_eq!(k.len(), 3 + 8);
-        }
-
-        let mut iter = table.iter();
-
-        loop {
-            if let Some((k, _)) = iter.next() {
-                let lk = LookupKey::new(&k, 123);
-                let userkey = lk.user_key();
-
-                assert!(filter_reader.key_may_match(iter.current_block_off, userkey));
-                assert!(!filter_reader.key_may_match(iter.current_block_off,
-                                                     "somerandomkey".as_bytes()));
-            } else {
-                break;
-            }
-        }
     }
 }

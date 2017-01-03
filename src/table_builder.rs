@@ -1,6 +1,5 @@
 use block::{BlockBuilder, BlockContents};
 use blockhandle::BlockHandle;
-use cmp::InternalKeyCmp;
 use filter::{BoxedFilterPolicy, NoFilterPolicy};
 use filter_block::FilterBlockBuilder;
 use key_types::InternalKey;
@@ -8,7 +7,6 @@ use options::{CompressionType, Options};
 
 use std::io::Write;
 use std::cmp::Ordering;
-use std::sync::Arc;
 
 use crc::crc32;
 use crc::Hasher32;
@@ -101,15 +99,9 @@ impl<'a, Dst: Write> TableBuilder<'a, Dst> {
 /// It's recommended that you use InternalFilterPolicy as FilterPol, as that policy extracts the
 /// underlying user keys from the InternalKeys used as keys in the table.
 impl<'a, Dst: Write> TableBuilder<'a, Dst> {
-    /// Create a new table builder.
-    /// The comparator in opt will be wrapped in a InternalKeyCmp.
-    pub fn new(mut opt: Options, dst: Dst, fpol: BoxedFilterPolicy) -> TableBuilder<'a, Dst> {
-        opt.cmp = Arc::new(Box::new(InternalKeyCmp(opt.cmp.clone())));
-        TableBuilder::new_raw(opt, dst, fpol)
-    }
-
-    /// Like new(), but doesn't wrap the comparator in an InternalKeyCmp (for testing)
-    pub fn new_raw(opt: Options, dst: Dst, fpol: BoxedFilterPolicy) -> TableBuilder<'a, Dst> {
+    /// Create a new TableBuilder. Currently the best choice for `fpol` is `NoFilterPolicy` (mod
+    /// filter; or use new_no_filter())
+    pub fn new(opt: Options, dst: Dst, fpol: BoxedFilterPolicy) -> TableBuilder<'a, Dst> {
         TableBuilder {
             opt: opt.clone(),
             dst: dst,
@@ -127,7 +119,7 @@ impl<'a, Dst: Write> TableBuilder<'a, Dst> {
     }
 
     /// Add a key to the table. The key as to be lexically greater or equal to the last one added.
-    pub fn add(&mut self, key: InternalKey<'a>, val: &[u8]) {
+    pub fn add(&mut self, key: &'a [u8], val: &[u8]) {
         assert!(self.data_block.is_some());
 
         if !self.prev_block_last_key.is_empty() {
@@ -270,7 +262,7 @@ mod tests {
         let mut d = Vec::with_capacity(512);
         let mut opt = Options::default();
         opt.block_restart_interval = 3;
-        let mut b = TableBuilder::new_raw(opt, &mut d, BloomPolicy::new(4));
+        let mut b = TableBuilder::new(opt, &mut d, BloomPolicy::new(4));
 
         let data = vec![("abc", "def"), ("abd", "dee"), ("bcd", "asa"), ("bsr", "a00")];
 
@@ -288,7 +280,7 @@ mod tests {
         let mut d = Vec::with_capacity(512);
         let mut opt = Options::default();
         opt.block_restart_interval = 3;
-        let mut b = TableBuilder::new_raw(opt, &mut d, BloomPolicy::new(4));
+        let mut b = TableBuilder::new(opt, &mut d, BloomPolicy::new(4));
 
         // Test two equal consecutive keys
         let data = vec![("abc", "def"), ("abc", "dee"), ("bcd", "asa"), ("bsr", "a00")];
