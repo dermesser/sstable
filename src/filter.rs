@@ -215,7 +215,6 @@ impl FilterPolicy for InternalFilterPolicy {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use key_types::LookupKey;
 
     const _BITS_PER_KEY: u32 = 12;
 
@@ -236,20 +235,6 @@ mod tests {
         filter
     }
 
-    /// Creates a filter using the keys from input_data() but converted to InternalKey format.
-    fn create_internalkey_filter() -> Vec<u8> {
-        let fpol = InternalFilterPolicy::new(BloomPolicy::new(_BITS_PER_KEY));
-        let input: Vec<Vec<u8>> = input_data()
-            .into_iter()
-            .map(|k| LookupKey::new(k, 123).internal_key().to_vec())
-            .collect();
-        let input_ = input.iter().map(|k| k.as_slice()).collect();
-
-        let filter = fpol.create_filter(&input_);
-
-        filter
-    }
-
     #[test]
     fn test_filter_bloom() {
         let f = create_filter();
@@ -258,12 +243,6 @@ mod tests {
         for k in input_data().iter() {
             assert!(fp.key_may_match(k, &f));
         }
-    }
-
-    /// This test verifies that InternalFilterPolicy works correctly.
-    #[test]
-    fn test_filter_internal_keys_identical() {
-        assert_eq!(create_filter(), create_internalkey_filter());
     }
 
     #[test]

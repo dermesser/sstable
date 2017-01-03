@@ -2,7 +2,6 @@ use block::{BlockBuilder, BlockContents};
 use blockhandle::BlockHandle;
 use filter::{BoxedFilterPolicy, NoFilterPolicy};
 use filter_block::FilterBlockBuilder;
-use key_types::InternalKey;
 use options::{CompressionType, Options};
 
 use std::io::Write;
@@ -96,8 +95,6 @@ impl<'a, Dst: Write> TableBuilder<'a, Dst> {
 
 /// TableBuilder is used for building a new SSTable. It groups entries into blocks,
 /// calculating checksums and bloom filters.
-/// It's recommended that you use InternalFilterPolicy as FilterPol, as that policy extracts the
-/// underlying user keys from the InternalKeys used as keys in the table.
 impl<'a, Dst: Write> TableBuilder<'a, Dst> {
     /// Create a new TableBuilder. Currently the best choice for `fpol` is `NoFilterPolicy` (mod
     /// filter; or use new_no_filter())
@@ -143,7 +140,7 @@ impl<'a, Dst: Write> TableBuilder<'a, Dst> {
     /// Writes an index entry for the current data_block where `next_key` is the first key of the
     /// next block.
     /// Calls write_block() for writing the block to disk.
-    fn write_data_block<'b>(&mut self, next_key: InternalKey<'b>) {
+    fn write_data_block(&mut self, next_key: &[u8]) {
         assert!(self.data_block.is_some());
 
         let block = self.data_block.take().unwrap();

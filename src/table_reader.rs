@@ -2,7 +2,6 @@ use block::{Block, BlockIter};
 use blockhandle::BlockHandle;
 use filter::BoxedFilterPolicy;
 use filter_block::FilterBlockReader;
-use key_types::InternalKey;
 use options::{self, CompressionType, Options};
 use table_builder::{self, Footer};
 use iterator::SSIterator;
@@ -165,13 +164,13 @@ impl<R: Read + Seek> Table<R> {
     /// Retrieve value from table. This function uses the attached filters, so is better suited if
     /// you frequently look for non-existing values (as it will detect the non-existence of an
     /// entry in a block without having to load the block).
-    pub fn get<'a>(&mut self, to: InternalKey<'a>) -> Option<Vec<u8>> {
+    pub fn get(&mut self, key: &[u8]) -> Option<Vec<u8>> {
         let mut iter = self.iter();
 
-        iter.seek(to);
+        iter.seek(key);
 
         if let Some((k, v)) = iter.current() {
-            if k == to { Some(v) } else { None }
+            if k == key { Some(v) } else { None }
         } else {
             None
         }
@@ -377,9 +376,9 @@ mod tests {
         src[10] += 1;
 
         let mut table = Table::new(Options::default(),
-                                       Cursor::new(&src as &[u8]),
-                                       size,
-                                       BloomPolicy::new(4))
+                                   Cursor::new(&src as &[u8]),
+                                   size,
+                                   BloomPolicy::new(4))
             .unwrap();
 
         assert!(table.filters.is_some());
@@ -410,9 +409,9 @@ mod tests {
         let data = build_data();
 
         let mut table = Table::new(Options::default(),
-                                       Cursor::new(&src as &[u8]),
-                                       size,
-                                       BloomPolicy::new(4))
+                                   Cursor::new(&src as &[u8]),
+                                   size,
+                                   BloomPolicy::new(4))
             .unwrap();
         let mut iter = table.iter();
         let mut i = 0;
@@ -446,9 +445,9 @@ mod tests {
         let (src, size) = build_table();
 
         let mut table = Table::new(Options::default(),
-                                       Cursor::new(&src as &[u8]),
-                                       size,
-                                       BloomPolicy::new(4))
+                                   Cursor::new(&src as &[u8]),
+                                   size,
+                                   BloomPolicy::new(4))
             .unwrap();
         let filter_reader = table.filters.clone().unwrap();
         let mut iter = table.iter();
@@ -469,9 +468,9 @@ mod tests {
         let (src, size) = build_table();
 
         let mut table = Table::new(Options::default(),
-                                       Cursor::new(&src as &[u8]),
-                                       size,
-                                       BloomPolicy::new(4))
+                                   Cursor::new(&src as &[u8]),
+                                   size,
+                                   BloomPolicy::new(4))
             .unwrap();
         let mut iter = table.iter();
 
@@ -503,9 +502,9 @@ mod tests {
         let data = build_data();
 
         let mut table = Table::new(Options::default(),
-                                       Cursor::new(&src as &[u8]),
-                                       size,
-                                       BloomPolicy::new(4))
+                                   Cursor::new(&src as &[u8]),
+                                   size,
+                                   BloomPolicy::new(4))
             .unwrap();
         let mut iter = table.iter();
         let mut i = 0;
@@ -540,9 +539,9 @@ mod tests {
         let (src, size) = build_table();
 
         let mut table = Table::new(Options::default(),
-                                       Cursor::new(&src as &[u8]),
-                                       size,
-                                       BloomPolicy::new(4))
+                                   Cursor::new(&src as &[u8]),
+                                   size,
+                                   BloomPolicy::new(4))
             .unwrap();
         let mut iter = table.iter();
 
@@ -561,9 +560,9 @@ mod tests {
         let (src, size) = build_table();
 
         let mut table = Table::new(Options::default(),
-                                       Cursor::new(&src as &[u8]),
-                                       size,
-                                       BloomPolicy::new(4))
+                                   Cursor::new(&src as &[u8]),
+                                   size,
+                                   BloomPolicy::new(4))
             .unwrap();
 
         assert!(table.get("aaa".as_bytes()).is_none());

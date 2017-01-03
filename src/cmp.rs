@@ -1,8 +1,4 @@
-use key_types::{self, LookupKey};
-use types;
-
 use std::cmp::Ordering;
-use std::sync::Arc;
 
 /// Comparator trait, supporting types that can be nested (i.e., add additional functionality on
 /// top of an inner comparator)
@@ -62,50 +58,9 @@ impl Cmp for DefaultCmp {
     }
 }
 
-/// Same as memtable_key_cmp, but for InternalKeys.
-#[derive(Clone)]
-pub struct InternalKeyCmp(pub Arc<Box<Cmp>>);
-
-impl Cmp for InternalKeyCmp {
-    fn cmp(&self, a: &[u8], b: &[u8]) -> Ordering {
-        let (_, seqa, keya) = key_types::parse_internal_key(a);
-        let (_, seqb, keyb) = key_types::parse_internal_key(b);
-
-        match self.0.cmp(keya, keyb) {
-            Ordering::Less => Ordering::Less,
-            Ordering::Greater => Ordering::Greater,
-            // reverse comparison!
-            Ordering::Equal => seqb.cmp(&seqa),
-        }
-    }
-
-    fn find_shortest_sep(&self, a: &[u8], b: &[u8]) -> Vec<u8> {
-        let (_, seqa, keya) = key_types::parse_internal_key(a);
-        let (_, _, keyb) = key_types::parse_internal_key(b);
-
-        let sep: Vec<u8> = self.0.find_shortest_sep(keya, keyb);
-
-        if sep.len() < keya.len() && self.0.cmp(keya, &sep) == Ordering::Less {
-            return LookupKey::new(&sep, types::MAX_SEQUENCE_NUMBER).internal_key().to_vec();
-        }
-
-        return LookupKey::new(&sep, seqa).internal_key().to_vec();
-    }
-
-    fn find_short_succ(&self, a: &[u8]) -> Vec<u8> {
-        let (_, seq, key) = key_types::parse_internal_key(a);
-        let succ: Vec<u8> = self.0.find_short_succ(key);
-        return LookupKey::new(&succ, seq).internal_key().to_vec();
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use key_types::LookupKey;
-    use types;
-
-    use std::sync::Arc;
 
     #[test]
     fn test_cmp_defaultcmp_shortest_sep() {
@@ -134,28 +89,5 @@ mod tests {
         assert_eq!(DefaultCmp.find_short_succ(&[]), &[0xff]);
         assert_eq!(DefaultCmp.find_short_succ(&[0xff, 0xff, 0xff]),
                    &[0xff, 0xff, 0xff, 0xff]);
-    }
-
-    #[test]
-    fn test_cmp_internalkeycmp_shortest_sep() {
-        let cmp = InternalKeyCmp(Arc::new(Box::new(DefaultCmp)));
-        assert_eq!(cmp.find_shortest_sep(LookupKey::new("abcd".as_bytes(), 1).internal_key(),
-                                         LookupKey::new("abcf".as_bytes(), 2).internal_key()),
-                   LookupKey::new("abce".as_bytes(), 1).internal_key());
-        assert_eq!(cmp.find_shortest_sep(LookupKey::new("abc".as_bytes(), 1).internal_key(),
-                                         LookupKey::new("zzz".as_bytes(), 2).internal_key()),
-                   LookupKey::new("b".as_bytes(), types::MAX_SEQUENCE_NUMBER).internal_key());
-        assert_eq!(cmp.find_shortest_sep(LookupKey::new("abc".as_bytes(), 1).internal_key(),
-                                         LookupKey::new("acd".as_bytes(), 2).internal_key()),
-                   LookupKey::new("abc".as_bytes(), 1).internal_key());
-        assert_eq!(cmp.find_shortest_sep(LookupKey::new("abc".as_bytes(), 1).internal_key(),
-                                         LookupKey::new("abe".as_bytes(), 2).internal_key()),
-                   LookupKey::new("abd".as_bytes(), 1).internal_key());
-        assert_eq!(cmp.find_shortest_sep(LookupKey::new("".as_bytes(), 1).internal_key(),
-                                         LookupKey::new("".as_bytes(), 2).internal_key()),
-                   LookupKey::new("".as_bytes(), 1).internal_key());
-        assert_eq!(cmp.find_shortest_sep(LookupKey::new("abc".as_bytes(), 2).internal_key(),
-                                         LookupKey::new("abc".as_bytes(), 2).internal_key()),
-                   LookupKey::new("abc".as_bytes(), 2).internal_key());
     }
 }
