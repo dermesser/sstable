@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use block::{Block, BlockIter};
 use blockhandle::BlockHandle;
 use filter::BoxedFilterPolicy;
@@ -73,7 +75,6 @@ impl TableBlock {
 
 pub struct Table<R: Read + Seek> {
     file: R,
-
     opt: Options,
 
     footer: Footer,
@@ -165,17 +166,47 @@ impl<R: Read + Seek> Table<R> {
     /// you frequently look for non-existing values (as it will detect the non-existence of an
     /// entry in a block without having to load the block).
     pub fn get(&mut self, key: &[u8]) -> Option<Vec<u8>> {
-        let mut iter = self.iter();
+        let mut index_iter = self.indexblock.iter();
+        index_iter.seek(key);
 
+        let handle;
+        if let Some((last_in_block, h)) = index_iter.current() {
+            if self.opt.cmp.cmp(key, &last_in_block) == Ordering::Less {
+                handle = BlockHandle::decode(&h).0;
+            } else {
+                return None;
+            }
+        } else {
+            return None;
+        }
+
+        // found correct block.
+        // Check bloom filter
+        if let Some(ref filters) = self.filters {
+            if !filters.key_may_match(handle.offset(), key) {
+                return None;
+            }
+        }
+
+        // Read block (potentially from cache)
+        let mut iter;
+        if let Ok(tb) = self.read_block(&handle) {
+            iter = tb.block.iter();
+        } else {
+            return None;
+        }
+
+        // Go to entry and check if it's the wanted entry.
         iter.seek(key);
-
         if let Some((k, v)) = iter.current() {
-            if k == key { Some(v) } else { None }
+            if self.opt.cmp.cmp(key, &k) == Ordering::Equal {
+                Some(v)
+            } else {
+                None
+            }
         } else {
             None
         }
-
-        // TODO: replace this with a more efficient method using filters
     }
 }
 

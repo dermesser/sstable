@@ -3,9 +3,18 @@ use std::cmp::Ordering;
 /// Comparator trait, supporting types that can be nested (i.e., add additional functionality on
 /// top of an inner comparator)
 pub trait Cmp {
+    /// Compare to byte strings, bytewise.
     fn cmp(&self, &[u8], &[u8]) -> Ordering;
+
+    /// Return the shortest byte string that compares "Greater" to the first argument and "Less" to
+    /// the second one.
     fn find_shortest_sep(&self, &[u8], &[u8]) -> Vec<u8>;
+    /// Return the shortest byte string that compares "Greater" to the argument.
     fn find_short_succ(&self, &[u8]) -> Vec<u8>;
+
+    /// A unique identifier for a comparator. A comparator wrapper (like InternalKeyCmp) may
+    /// return the id of its inner comparator.
+    fn id(&self) -> &'static str;
 }
 
 /// Lexical comparator.
@@ -15,6 +24,10 @@ pub struct DefaultCmp;
 impl Cmp for DefaultCmp {
     fn cmp(&self, a: &[u8], b: &[u8]) -> Ordering {
         a.cmp(b)
+    }
+
+    fn id(&self) -> &'static str {
+        "leveldb.BytewiseComparator"
     }
 
     fn find_shortest_sep(&self, a: &[u8], b: &[u8]) -> Vec<u8> {
@@ -40,7 +53,12 @@ impl Cmp for DefaultCmp {
 
             diff_at += 1;
         }
-        return a.to_vec();
+        // Backup case: either `a` is full of 0xff, or all different places are less than 2
+        // characters apart.
+        // The result is not necessarily short, but a good separator.
+        let mut sep = a.to_vec();
+        sep[a.len() - 1] += 1;
+        return sep;
     }
 
     fn find_short_succ(&self, a: &[u8]) -> Vec<u8> {
@@ -67,15 +85,17 @@ mod tests {
         assert_eq!(DefaultCmp.find_shortest_sep("abcd".as_bytes(), "abcf".as_bytes()),
                    "abce".as_bytes());
         assert_eq!(DefaultCmp.find_shortest_sep("abc".as_bytes(), "acd".as_bytes()),
-                   "abc".as_bytes());
+                   "abd".as_bytes());
         assert_eq!(DefaultCmp.find_shortest_sep("abcdefghi".as_bytes(), "abcffghi".as_bytes()),
                    "abce".as_bytes());
         assert_eq!(DefaultCmp.find_shortest_sep("a".as_bytes(), "a".as_bytes()),
                    "a".as_bytes());
         assert_eq!(DefaultCmp.find_shortest_sep("a".as_bytes(), "b".as_bytes()),
-                   "a".as_bytes());
+                   "b".as_bytes());
         assert_eq!(DefaultCmp.find_shortest_sep("abc".as_bytes(), "zzz".as_bytes()),
                    "b".as_bytes());
+        assert_eq!(DefaultCmp.find_shortest_sep("yyy".as_bytes(), "z".as_bytes()),
+                   "yyz".as_bytes());
         assert_eq!(DefaultCmp.find_shortest_sep("".as_bytes(), "".as_bytes()),
                    "".as_bytes());
     }
