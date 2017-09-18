@@ -73,14 +73,3 @@ pub fn from_io_result<T>(e: io::Result<T>) -> Result<T> {
         }
     }
 }
-
-/// Describes a file on disk.
-#[derive(Clone, Debug, PartialEq)]
-pub struct FileMetaData {
-    pub allowed_seeks: isize,
-    pub num: u64,
-    pub size: u64,
-    // these are in InternalKey format:
-    pub smallest: Vec<u8>,
-    pub largest: Vec<u8>,
-}
