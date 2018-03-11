@@ -16,3 +16,6 @@ snap = "0.2"
 
 [dev-dependencies]
 time-test = "0.2"
+
+[workspace]
+members = ["examples/rw_sstable"]
