@@ -2,7 +2,9 @@
 
 use error::Result;
 
+use std::fs::File;
 use std::cell::RefCell;
+use std::os::unix::fs::FileExt;
 use std::rc::Rc;
 
 pub trait RandomAccess {
@@ -26,6 +28,12 @@ impl RandomAccess for BufferBackedFile {
         };
         (&mut dst[0..to_read]).copy_from_slice(&self[off..off + to_read]);
         Ok(to_read)
+    }
+}
+
+impl RandomAccess for File {
+    fn read_at(&self, off: usize, dst: &mut [u8]) -> Result<usize> {
+        Ok((self as &FileExt).read_at(dst, off as u64)?)
     }
 }
 

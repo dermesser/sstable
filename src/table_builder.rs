@@ -265,7 +265,6 @@ impl<Dst: Write> TableBuilder<Dst> {
 mod tests {
     use super::*;
     use blockhandle::BlockHandle;
-    use options;
 
     #[test]
     fn test_footer() {

@@ -9,6 +9,8 @@ use table_builder::{self, Footer};
 use types::{current_key_val, RandomAccess, SSIterator};
 
 use std::cmp::Ordering;
+use std::fs;
+use std::path;
 use std::rc::Rc;
 
 use integer_encoding::FixedIntWriter;
@@ -34,26 +36,32 @@ pub struct Table {
 }
 
 impl Table {
-    /// Creates a new table reader operating on unformatted keys (i.e., UserKey).
-    fn new(opt: Options, file: Rc<Box<RandomAccess>>, size: usize) -> Result<Table> {
-        let footer = try!(read_footer(file.as_ref().as_ref(), size));
+    /// Creates a new table reader from a file at `path`.
+    pub fn new_from_file(opt: Options, path: &path::Path) -> Result<Table> {
+        let f = fs::OpenOptions::new().read(true).open(path)?;
+        let size = f.metadata()?.len() as usize;
+        Table::new(opt, Box::new(f), size)
+    }
+
+    /// Creates a new table reader.
+    pub fn new(opt: Options, file: Box<RandomAccess>, size: usize) -> Result<Table> {
+        let footer = try!(read_footer(file.as_ref(), size));
         let indexblock = try!(table_block::read_table_block(
             opt.clone(),
-            file.as_ref().as_ref(),
+            file.as_ref(),
             &footer.index
         ));
         let metaindexblock = try!(table_block::read_table_block(
             opt.clone(),
-            file.as_ref().as_ref(),
+            file.as_ref(),
             &footer.meta_index
         ));
 
-        let filter_block_reader =
-            Table::read_filter_block(&metaindexblock, file.as_ref().as_ref(), &opt)?;
+        let filter_block_reader = Table::read_filter_block(&metaindexblock, file.as_ref(), &opt)?;
         let cache_id = opt.block_cache.borrow_mut().new_cache_id();
 
         Ok(Table {
-            file: file,
+            file: Rc::new(file),
             file_size: size,
             cache_id: cache_id,
             opt: opt,
@@ -346,7 +354,7 @@ impl SSIterator for TableIterator {
 
 #[cfg(test)]
 mod tests {
-    use options::{self, CompressionType};
+    use options::CompressionType;
     use table_builder::TableBuilder;
     use test_util::{test_iterator_properties, SSIteratorIter};
     use types::{current_key_val, SSIterator};
@@ -392,8 +400,8 @@ mod tests {
         (d, size)
     }
 
-    fn wrap_buffer(src: Vec<u8>) -> Rc<Box<RandomAccess>> {
-        Rc::new(Box::new(src))
+    fn wrap_buffer(src: Vec<u8>) -> Box<RandomAccess> {
+        Box::new(src)
     }
 
     #[test]

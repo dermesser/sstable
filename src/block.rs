@@ -304,7 +304,6 @@ impl SSIterator for BlockIter {
 mod tests {
     use super::*;
     use block_builder::BlockBuilder;
-    use options;
     use test_util::{test_iterator_properties, SSIteratorIter};
     use types::{current_key_val, SSIterator};
 
