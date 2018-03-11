@@ -46,10 +46,6 @@ impl FilterBlockBuilder {
         }
     }
 
-    pub fn size_estimate(&self) -> usize {
-        self.filters.len() + 4 * self.filter_offsets.len() + 4 + 1
-    }
-
     pub fn filter_name(&self) -> &'static str {
         self.policy.name()
     }

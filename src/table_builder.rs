@@ -122,20 +122,6 @@ impl<Dst: Write> TableBuilder<Dst> {
         self.num_entries
     }
 
-    fn size_estimate(&self) -> usize {
-        let mut size = 0;
-        if let Some(ref b) = self.data_block {
-            size += b.size_estimate();
-        }
-        if let Some(ref b) = self.index_block {
-            size += b.size_estimate();
-        }
-        if let Some(ref b) = self.filter_block {
-            size += b.size_estimate();
-        }
-        size + self.offset + FULL_FOOTER_LENGTH
-    }
-
     /// Add a key to the table. The key must be lexically greater or equal to the one that was
     /// previously added.
     pub fn add(&mut self, key: &[u8], val: &[u8]) -> Result<()> {
