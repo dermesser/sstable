@@ -2,7 +2,6 @@ use block::{Block, BlockIter};
 use blockhandle::BlockHandle;
 use cache;
 use error::Result;
-use filter;
 use filter_block::FilterBlockReader;
 use options::Options;
 use table_block;
@@ -347,7 +346,6 @@ impl SSIterator for TableIterator {
 
 #[cfg(test)]
 mod tests {
-    use filter::BloomPolicy;
     use options::{self, CompressionType};
     use table_builder::TableBuilder;
     use test_util::{test_iterator_properties, SSIteratorIter};
@@ -374,7 +372,7 @@ mod tests {
     // reason, a call f(v, v.len()) doesn't work for borrowing reasons.
     fn build_table(data: Vec<(&'static str, &'static str)>) -> (Vec<u8>, usize) {
         let mut d = Vec::with_capacity(512);
-        let mut opt = options::for_test();
+        let mut opt = Options::default();
         opt.block_restart_interval = 2;
         opt.block_size = 32;
         opt.compression_type = CompressionType::CompressionSnappy;
@@ -394,32 +392,6 @@ mod tests {
         (d, size)
     }
 
-    // Build a table containing keys.
-    fn build_internal_table() -> (Vec<u8>, usize) {
-        let mut d = Vec::with_capacity(512);
-        let mut opt = options::for_test();
-        opt.block_restart_interval = 1;
-        opt.block_size = 32;
-        opt.filter_policy = Rc::new(Box::new(BloomPolicy::new(4)));
-
-        let mut i = 1 as u64;
-        let data = build_data();
-
-        {
-            let mut b = TableBuilder::new(opt, &mut d);
-
-            for &(ref k, ref v) in data.iter() {
-                b.add(k.as_bytes(), v.as_bytes()).unwrap();
-            }
-
-            b.finish().unwrap();
-        }
-
-        let size = d.len();
-
-        (d, size)
-    }
-
     fn wrap_buffer(src: Vec<u8>) -> Rc<Box<RandomAccess>> {
         Rc::new(Box::new(src))
     }
@@ -427,7 +399,7 @@ mod tests {
     #[test]
     fn test_table_approximate_offset() {
         let (src, size) = build_table(build_data());
-        let mut opt = options::for_test();
+        let mut opt = Options::default();
         opt.block_size = 32;
         let table = Table::new(opt, wrap_buffer(src), size).unwrap();
         let mut iter = table.iter();
@@ -446,7 +418,7 @@ mod tests {
     #[test]
     fn test_table_block_cache_use() {
         let (src, size) = build_table(build_data());
-        let mut opt = options::for_test();
+        let mut opt = Options::default();
         opt.block_size = 32;
 
         let table = Table::new(opt.clone(), wrap_buffer(src), size).unwrap();
@@ -469,7 +441,7 @@ mod tests {
         let (src, size) = build_table(build_data());
         let data = build_data();
 
-        let table = Table::new(options::for_test(), wrap_buffer(src), size).unwrap();
+        let table = Table::new(Options::default(), wrap_buffer(src), size).unwrap();
         let mut iter = table.iter();
         let mut i = 0;
 
@@ -519,7 +491,7 @@ mod tests {
     fn test_table_iterator_filter() {
         let (src, size) = build_table(build_data());
 
-        let table = Table::new(options::for_test(), wrap_buffer(src), size).unwrap();
+        let table = Table::new(Options::default(), wrap_buffer(src), size).unwrap();
         assert!(table.filters.is_some());
         let filter_reader = table.filters.clone().unwrap();
         let mut iter = table.iter();
@@ -538,7 +510,7 @@ mod tests {
     fn test_table_iterator_state_behavior() {
         let (src, size) = build_table(build_data());
 
-        let table = Table::new(options::for_test(), wrap_buffer(src), size).unwrap();
+        let table = Table::new(Options::default(), wrap_buffer(src), size).unwrap();
         let mut iter = table.iter();
 
         // behavior test
@@ -568,7 +540,7 @@ mod tests {
         let mut data = build_data();
         data.truncate(4);
         let (src, size) = build_table(data);
-        let table = Table::new(options::for_test(), wrap_buffer(src), size).unwrap();
+        let table = Table::new(Options::default(), wrap_buffer(src), size).unwrap();
         test_iterator_properties(table.iter());
     }
 
@@ -577,7 +549,7 @@ mod tests {
         let (src, size) = build_table(build_data());
         let data = build_data();
 
-        let table = Table::new(options::for_test(), wrap_buffer(src), size).unwrap();
+        let table = Table::new(Options::default(), wrap_buffer(src), size).unwrap();
         let mut iter = table.iter();
         let mut i = 0;
 
@@ -612,7 +584,7 @@ mod tests {
     fn test_table_iterator_seek() {
         let (src, size) = build_table(build_data());
 
-        let table = Table::new(options::for_test(), wrap_buffer(src), size).unwrap();
+        let table = Table::new(Options::default(), wrap_buffer(src), size).unwrap();
         let mut iter = table.iter();
 
         iter.seek(b"bcd");
@@ -639,7 +611,7 @@ mod tests {
     fn test_table_get() {
         let (src, size) = build_table(build_data());
 
-        let table = Table::new(options::for_test(), wrap_buffer(src), size).unwrap();
+        let table = Table::new(Options::default(), wrap_buffer(src), size).unwrap();
         let table2 = table.clone();
 
         let mut _iter = table.iter();
@@ -668,7 +640,7 @@ mod tests {
 
         src[10] += 1;
 
-        let table = Table::new(options::for_test(), wrap_buffer(src), size).unwrap();
+        let table = Table::new(Options::default(), wrap_buffer(src), size).unwrap();
 
         assert!(table.filters.is_some());
         assert_eq!(table.filters.as_ref().unwrap().num(), 1);

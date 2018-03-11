@@ -6,7 +6,6 @@ use std::rc::Rc;
 use integer_encoding::FixedInt;
 
 const FILTER_BASE_LOG2: u32 = 11;
-const FILTER_BASE: u32 = 1 << FILTER_BASE_LOG2; // 2 KiB
 
 /// For a given byte offset, returns the index of the filter that includes the key at that offset.
 #[inline]

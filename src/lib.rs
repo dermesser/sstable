@@ -13,19 +13,18 @@ pub mod error;
 pub mod filter;
 mod filter_block;
 mod table_block;
-mod test_util;
 mod types;
 
-pub mod cmp;
-pub mod iterator;
-pub mod options;
-pub mod table_builder;
-pub mod table_reader;
+mod cmp;
+mod options;
+mod table_builder;
+mod table_reader;
 
-pub use cmp::Cmp;
-pub use iterator::StandardComparator;
-pub use iterator::SSIterator;
+pub use cmp::{Cmp, DefaultCmp};
 pub use options::Options;
-
+pub use types::{current_key_val, SSIterator};
 pub use table_builder::TableBuilder;
 pub use table_reader::{Table, TableIterator};
+
+#[cfg(test)]
+mod test_util;

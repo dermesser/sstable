@@ -5,7 +5,7 @@ use error::Result;
 use filter::NoFilterPolicy;
 use filter_block::FilterBlockBuilder;
 use options::{CompressionType, Options};
-use types::{mask_crc, unmask_crc};
+use types::mask_crc;
 
 use std::cmp::Ordering;
 use std::io::Write;
@@ -18,8 +18,7 @@ use snap::Encoder;
 
 pub const FOOTER_LENGTH: usize = 40;
 pub const FULL_FOOTER_LENGTH: usize = FOOTER_LENGTH + 8;
-pub const MAGIC_FOOTER_NUMBER: u64 = 0xdb4775248b80fb57;
-pub const MAGIC_FOOTER_ENCODED: [u8; 8] = [0x57, 0xfb, 0x80, 0x8b, 0x24, 0x75, 0x47, 0xdb];
+const MAGIC_FOOTER_ENCODED: [u8; 8] = [0x57, 0xfb, 0x80, 0x8b, 0x24, 0x75, 0x47, 0xdb];
 
 pub const TABLE_BLOCK_COMPRESS_LEN: usize = 1;
 pub const TABLE_BLOCK_CKSUM_LEN: usize = 4;
@@ -70,15 +69,17 @@ impl Footer {
     }
 }
 
-/// A table consists of DATA BLOCKs, META BLOCKs, a METAINDEX BLOCK, an INDEX BLOCK and a FOOTER.
-///
-/// DATA BLOCKs, META BLOCKs, INDEX BLOCK and METAINDEX BLOCK are built using the code in
-/// the `block` module.
-///
-/// The FOOTER consists of a BlockHandle that points to the metaindex block, another pointing to
-/// the index block, padding to fill up to 40 B and at the end the 8B magic number
-/// 0xdb4775248b80fb57.
+/// A TableBuilder is used to create a table from a set of sorted string pairs and write it to a
+/// file or a buffer.
 
+// A table consists of DATA BLOCKs, META BLOCKs, a METAINDEX BLOCK, an INDEX BLOCK and a FOOTER.
+//
+// DATA BLOCKs, META BLOCKs, INDEX BLOCK and METAINDEX BLOCK are built using the code in
+// the `block` module.
+//
+// The FOOTER consists of a BlockHandle that points to the metaindex block, another pointing to
+// the index block, padding to fill up to 40 B and at the end the 8B magic number
+// 0xdb4775248b80fb57.
 pub struct TableBuilder<Dst: Write> {
     opt: Options,
     dst: Dst,
@@ -116,11 +117,12 @@ impl<Dst: Write> TableBuilder<Dst> {
         }
     }
 
+    /// Returns the current number of entries.
     pub fn entries(&self) -> usize {
         self.num_entries
     }
 
-    pub fn size_estimate(&self) -> usize {
+    fn size_estimate(&self) -> usize {
         let mut size = 0;
         if let Some(ref b) = self.data_block {
             size += b.size_estimate();
@@ -134,7 +136,8 @@ impl<Dst: Write> TableBuilder<Dst> {
         size + self.offset + FULL_FOOTER_LENGTH
     }
 
-    /// Add a key to the table. The key as to be lexically greater or equal to the last one added.
+    /// Add a key to the table. The key must be lexically greater or equal to the one that was
+    /// previously added.
     pub fn add(&mut self, key: &[u8], val: &[u8]) -> Result<()> {
         assert!(self.data_block.is_some());
 
@@ -280,7 +283,7 @@ mod tests {
     #[test]
     fn test_table_builder() {
         let mut d = Vec::with_capacity(512);
-        let mut opt = options::for_test();
+        let mut opt = Options::default();
         opt.block_restart_interval = 3;
         opt.compression_type = CompressionType::CompressionSnappy;
         let mut b = TableBuilder::new(opt, &mut d);
@@ -317,7 +320,7 @@ mod tests {
     #[should_panic]
     fn test_bad_input() {
         let mut d = Vec::with_capacity(512);
-        let mut opt = options::for_test();
+        let mut opt = Options::default();
         opt.block_restart_interval = 3;
         let mut b = TableBuilder::new(opt, &mut d);
 

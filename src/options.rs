@@ -58,7 +58,3 @@ impl Default for Options {
         }
     }
 }
-
-pub fn for_test() -> Options {
-    Options::default()
-}

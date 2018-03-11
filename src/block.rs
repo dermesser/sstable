@@ -324,7 +324,7 @@ mod tests {
 
     #[test]
     fn test_block_iterator_properties() {
-        let o = options::for_test();
+        let o = Options::default();
         let mut builder = BlockBuilder::new(o.clone());
         let mut data = get_data();
         data.truncate(4);
@@ -339,7 +339,7 @@ mod tests {
 
     #[test]
     fn test_block_empty() {
-        let mut o = options::for_test();
+        let mut o = Options::default();
         o.block_restart_interval = 16;
         let builder = BlockBuilder::new(o);
 
@@ -347,7 +347,7 @@ mod tests {
         assert_eq!(blockc.len(), 8);
         assert_eq!(blockc, vec![0, 0, 0, 0, 1, 0, 0, 0]);
 
-        let block = Block::new(options::for_test(), blockc);
+        let block = Block::new(Options::default(), blockc);
 
         for _ in SSIteratorIter::wrap(&mut block.iter()) {
             panic!("expected 0 iterations");
@@ -357,14 +357,14 @@ mod tests {
     #[test]
     fn test_block_build_iterate() {
         let data = get_data();
-        let mut builder = BlockBuilder::new(options::for_test());
+        let mut builder = BlockBuilder::new(Options::default());
 
         for &(k, v) in data.iter() {
             builder.add(k, v);
         }
 
         let block_contents = builder.finish();
-        let mut block = Block::new(options::for_test(), block_contents).iter();
+        let mut block = Block::new(Options::default(), block_contents).iter();
         let mut i = 0;
 
         assert!(!block.valid());
@@ -379,7 +379,7 @@ mod tests {
 
     #[test]
     fn test_block_iterate_reverse() {
-        let mut o = options::for_test();
+        let mut o = Options::default();
         o.block_restart_interval = 3;
         let data = get_data();
         let mut builder = BlockBuilder::new(o.clone());
@@ -425,7 +425,7 @@ mod tests {
 
     #[test]
     fn test_block_seek() {
-        let mut o = options::for_test();
+        let mut o = Options::default();
         o.block_restart_interval = 3;
 
         let data = get_data();
@@ -483,7 +483,7 @@ mod tests {
 
     #[test]
     fn test_block_seek_to_last() {
-        let mut o = options::for_test();
+        let mut o = Options::default();
 
         // Test with different number of restarts
         for block_restart_interval in vec![2, 6, 10] {
