@@ -35,7 +35,11 @@ impl Cmp for DefaultCmp {
             return a.to_vec();
         }
 
-        let min = if a.len() < b.len() { a.len() } else { b.len() };
+        let min = if a.len() < b.len() {
+            a.len()
+        } else {
+            b.len()
+        };
         let mut diff_at = 0;
 
         while diff_at < min && a[diff_at] == b[diff_at] {
@@ -82,32 +86,54 @@ mod tests {
 
     #[test]
     fn test_cmp_defaultcmp_shortest_sep() {
-        assert_eq!(DefaultCmp.find_shortest_sep("abcd".as_bytes(), "abcf".as_bytes()),
-                   "abce".as_bytes());
-        assert_eq!(DefaultCmp.find_shortest_sep("abc".as_bytes(), "acd".as_bytes()),
-                   "abd".as_bytes());
-        assert_eq!(DefaultCmp.find_shortest_sep("abcdefghi".as_bytes(), "abcffghi".as_bytes()),
-                   "abce".as_bytes());
-        assert_eq!(DefaultCmp.find_shortest_sep("a".as_bytes(), "a".as_bytes()),
-                   "a".as_bytes());
-        assert_eq!(DefaultCmp.find_shortest_sep("a".as_bytes(), "b".as_bytes()),
-                   "b".as_bytes());
-        assert_eq!(DefaultCmp.find_shortest_sep("abc".as_bytes(), "zzz".as_bytes()),
-                   "b".as_bytes());
-        assert_eq!(DefaultCmp.find_shortest_sep("yyy".as_bytes(), "z".as_bytes()),
-                   "yyz".as_bytes());
-        assert_eq!(DefaultCmp.find_shortest_sep("".as_bytes(), "".as_bytes()),
-                   "".as_bytes());
+        assert_eq!(
+            DefaultCmp.find_shortest_sep("abcd".as_bytes(), "abcf".as_bytes()),
+            "abce".as_bytes()
+        );
+        assert_eq!(
+            DefaultCmp.find_shortest_sep("abc".as_bytes(), "acd".as_bytes()),
+            "abd".as_bytes()
+        );
+        assert_eq!(
+            DefaultCmp.find_shortest_sep("abcdefghi".as_bytes(), "abcffghi".as_bytes()),
+            "abce".as_bytes()
+        );
+        assert_eq!(
+            DefaultCmp.find_shortest_sep("a".as_bytes(), "a".as_bytes()),
+            "a".as_bytes()
+        );
+        assert_eq!(
+            DefaultCmp.find_shortest_sep("a".as_bytes(), "b".as_bytes()),
+            "b".as_bytes()
+        );
+        assert_eq!(
+            DefaultCmp.find_shortest_sep("abc".as_bytes(), "zzz".as_bytes()),
+            "b".as_bytes()
+        );
+        assert_eq!(
+            DefaultCmp.find_shortest_sep("yyy".as_bytes(), "z".as_bytes()),
+            "yyz".as_bytes()
+        );
+        assert_eq!(
+            DefaultCmp.find_shortest_sep("".as_bytes(), "".as_bytes()),
+            "".as_bytes()
+        );
     }
 
     #[test]
     fn test_cmp_defaultcmp_short_succ() {
-        assert_eq!(DefaultCmp.find_short_succ("abcd".as_bytes()),
-                   "b".as_bytes());
-        assert_eq!(DefaultCmp.find_short_succ("zzzz".as_bytes()),
-                   "{".as_bytes());
+        assert_eq!(
+            DefaultCmp.find_short_succ("abcd".as_bytes()),
+            "b".as_bytes()
+        );
+        assert_eq!(
+            DefaultCmp.find_short_succ("zzzz".as_bytes()),
+            "{".as_bytes()
+        );
         assert_eq!(DefaultCmp.find_short_succ(&[]), &[0xff]);
-        assert_eq!(DefaultCmp.find_short_succ(&[0xff, 0xff, 0xff]),
-                   &[0xff, 0xff, 0xff, 0xff]);
+        assert_eq!(
+            DefaultCmp.find_short_succ(&[0xff, 0xff, 0xff]),
+            &[0xff, 0xff, 0xff, 0xff]
+        );
     }
 }
