@@ -3,7 +3,7 @@ extern crate integer_encoding;
 
 mod block;
 mod blockhandle;
-mod filter;
+pub mod filter;
 mod filter_block;
 mod types;
 
