@@ -3,13 +3,17 @@ use std::cmp::Ordering;
 use std::rc::Rc;
 
 use options::Options;
-use iterator::SSIterator;
+use types::SSIterator;
 
 use integer_encoding::FixedInt;
 use integer_encoding::VarInt;
 
 pub type BlockContents = Vec<u8>;
 
+/// A Block is an immutable ordered set of key/value entries.
+///
+/// The structure internally looks like follows:
+///
 /// A block is a list of ENTRIES followed by a list of RESTARTS, terminated by a fixed u32
 /// N_RESTARTS.
 ///
@@ -26,6 +30,7 @@ pub type BlockContents = Vec<u8>;
 /// A RESTART is a fixed u32 pointing to the beginning of an ENTRY.
 ///
 /// N_RESTARTS contains the number of restarts.
+#[derive(Clone)]
 pub struct Block {
     block: Rc<BlockContents>,
     opt: Options,
@@ -34,7 +39,7 @@ pub struct Block {
 impl Block {
     /// Return an iterator over this block.
     /// Note that the iterator isn't bound to the block's lifetime; the iterator uses the same
-    /// refcounted block contents as this block. (meaning also that if the iterator isn't released,
+    /// refcounted block contents as this block, meaning that if the iterator isn't released,
     /// the memory occupied by the block isn't, either)
     pub fn iter(&self) -> BlockIter {
         let restarts = u32::decode_fixed(&self.block[self.block.len() - 4..]);
@@ -67,6 +72,8 @@ impl Block {
     }
 }
 
+/// BlockIter is an iterator over the entries in a block. It doesn't depend on the Block's
+/// lifetime, as it uses a refcounted block underneath.
 pub struct BlockIter {
     /// The underlying block contents.
     /// TODO: Maybe (probably...) this needs an Arc.
@@ -106,8 +113,8 @@ impl BlockIter {
         let (shared, non_shared, _, head_len) = self.parse_entry_and_advance();
 
         assert_eq!(shared, 0);
-
         self.assemble_key(off + head_len, shared, non_shared);
+        assert!(self.valid());
     }
 
     /// Return the offset that restart `ix` points to.
@@ -123,7 +130,7 @@ impl BlockIter {
     /// Returns SHARED, NON_SHARED, VALSIZE and [length of length spec] from the current position,
     /// where 'length spec' is the length of the three values in the entry header, as described
     /// above.
-    /// Advances self.offset to point to the beginning of the next entry.
+    /// Advances self.offset to the beginning of the next entry.
     fn parse_entry_and_advance(&mut self) -> (usize, usize, usize, usize) {
         let mut i = 0;
         let (shared, sharedlen) = usize::decode_var(&self.block[self.offset..]);
@@ -136,7 +143,7 @@ impl BlockIter {
         i += valsizelen;
 
         self.val_offset = self.offset + i + non_shared;
-        self.offset = self.offset + i + non_shared + valsize;
+        self.offset = self.val_offset + valsize;
 
         (shared, non_shared, valsize, i)
     }
@@ -149,8 +156,9 @@ impl BlockIter {
     /// respectively non-shared parts of the key.
     /// Only self.key is mutated.
     fn assemble_key(&mut self, off: usize, shared: usize, non_shared: usize) {
-        self.key.resize(shared, 0);
-        self.key.extend_from_slice(&self.block[off..off + non_shared]);
+        self.key.truncate(shared);
+        self.key
+            .extend_from_slice(&self.block[off..off + non_shared]);
     }
 
     pub fn seek_to_last(&mut self) {
@@ -161,40 +169,41 @@ impl BlockIter {
             self.reset();
         }
 
-        while let Some((_, _)) = self.next() {
+        // Stop at last entry, before the iterator becomes invalid.
+        //
+        // We're checking the position before calling advance; if a restart point points to the
+        // last entry, calling advance() will directly reset the iterator.
+        while self.offset < self.restarts_off {
+            self.advance();
         }
+        assert!(self.valid());
     }
 }
 
-impl Iterator for BlockIter {
-    type Item = (Vec<u8>, Vec<u8>);
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl SSIterator for BlockIter {
+    fn advance(&mut self) -> bool {
         if self.offset >= self.restarts_off {
-            self.offset = self.restarts_off;
-            // current_entry_offset is left at the offset of the last entry
-            return None;
+            self.reset();
+            return false;
         } else {
             self.current_entry_offset = self.offset;
         }
 
         let current_off = self.current_entry_offset;
 
-        let (shared, non_shared, valsize, entry_head_len) = self.parse_entry_and_advance();
+        let (shared, non_shared, _valsize, entry_head_len) = self.parse_entry_and_advance();
         self.assemble_key(current_off + entry_head_len, shared, non_shared);
 
         // Adjust current_restart_ix
         let num_restarts = self.number_restarts();
-        while self.current_restart_ix + 1 < num_restarts &&
-              self.get_restart_point(self.current_restart_ix + 1) < self.current_entry_offset {
+        while self.current_restart_ix + 1 < num_restarts
+            && self.get_restart_point(self.current_restart_ix + 1) < self.current_entry_offset
+        {
             self.current_restart_ix += 1;
         }
-
-        Some((self.key.clone(), Vec::from(&self.block[self.val_offset..self.val_offset + valsize])))
+        true
     }
-}
 
-impl SSIterator for BlockIter {
     fn reset(&mut self) {
         self.offset = 0;
         self.val_offset = 0;
@@ -202,14 +211,14 @@ impl SSIterator for BlockIter {
         self.key.clear();
     }
 
-    fn prev(&mut self) -> Option<Self::Item> {
+    fn prev(&mut self) -> bool {
         // as in the original implementation -- seek to last restart point, then look for key
         let orig_offset = self.current_entry_offset;
 
         // At the beginning, can't go further back
         if orig_offset == 0 {
             self.reset();
-            return None;
+            return false;
         }
 
         while self.get_restart_point(self.current_restart_ix) >= orig_offset {
@@ -230,8 +239,7 @@ impl SSIterator for BlockIter {
         // Stop if the next entry would be the original one (self.offset always points to the start
         // of the next entry)
         loop {
-            result = self.next();
-
+            result = self.advance();
             if self.offset >= orig_offset {
                 break;
             }
@@ -276,159 +284,62 @@ impl SSIterator for BlockIter {
     }
 
     fn valid(&self) -> bool {
-        !self.key.is_empty() && self.val_offset > 0 && self.val_offset < self.restarts_off
+        !self.key.is_empty() && self.val_offset > 0 && self.val_offset <= self.restarts_off
     }
 
-    fn current(&self) -> Option<Self::Item> {
+    fn current(&self, key: &mut Vec<u8>, val: &mut Vec<u8>) -> bool {
         if self.valid() {
-            Some((self.key.clone(), Vec::from(&self.block[self.val_offset..self.offset])))
+            key.clear();
+            val.clear();
+            key.extend_from_slice(&self.key);
+            val.extend_from_slice(&self.block[self.val_offset..self.offset]);
+            true
         } else {
-            None
+            false
         }
     }
 }
-
-pub struct BlockBuilder {
-    opt: Options,
-    buffer: Vec<u8>,
-    restarts: Vec<u32>,
-
-    last_key: Vec<u8>,
-    counter: usize,
-}
-
-impl BlockBuilder {
-    pub fn new(o: Options) -> BlockBuilder {
-        let mut restarts = vec![0];
-        restarts.reserve(1023);
-
-        BlockBuilder {
-            buffer: Vec::with_capacity(o.block_size),
-            opt: o,
-            restarts: restarts,
-            last_key: Vec::new(),
-            counter: 0,
-        }
-    }
-
-    pub fn entries(&self) -> usize {
-        self.counter
-    }
-
-    pub fn last_key<'a>(&'a self) -> &'a [u8] {
-        &self.last_key
-    }
-
-    pub fn size_estimate(&self) -> usize {
-        self.buffer.len() + self.restarts.len() * 4 + 4
-    }
-
-    #[allow(dead_code)]
-    pub fn reset(&mut self) {
-        self.buffer.clear();
-        self.restarts.clear();
-        self.last_key.clear();
-        self.counter = 0;
-    }
-
-    pub fn add(&mut self, key: &[u8], val: &[u8]) {
-        assert!(self.counter <= self.opt.block_restart_interval);
-        assert!(self.buffer.is_empty() ||
-                self.opt.cmp.cmp(self.last_key.as_slice(), key) == Ordering::Less);
-
-        let mut shared = 0;
-
-        if self.counter < self.opt.block_restart_interval {
-            let smallest = if self.last_key.len() < key.len() {
-                self.last_key.len()
-            } else {
-                key.len()
-            };
-
-            while shared < smallest && self.last_key[shared] == key[shared] {
-                shared += 1;
-            }
-        } else {
-            self.restarts.push(self.buffer.len() as u32);
-            self.last_key.resize(0, 0);
-            self.counter = 0;
-        }
-
-        let non_shared = key.len() - shared;
-
-        let mut buf = [0 as u8; 4];
-
-        let mut sz = shared.encode_var(&mut buf[..]);
-        self.buffer.extend_from_slice(&buf[0..sz]);
-        sz = non_shared.encode_var(&mut buf[..]);
-        self.buffer.extend_from_slice(&buf[0..sz]);
-        sz = val.len().encode_var(&mut buf[..]);
-        self.buffer.extend_from_slice(&buf[0..sz]);
-
-        self.buffer.extend_from_slice(&key[shared..]);
-        self.buffer.extend_from_slice(val);
-
-        // Update key
-        self.last_key.resize(shared, 0);
-        self.last_key.extend_from_slice(&key[shared..]);
-
-        self.counter += 1;
-    }
-
-    pub fn finish(mut self) -> BlockContents {
-        // 1. Append RESTARTS
-        let mut i = self.buffer.len();
-        self.buffer.resize(i + self.restarts.len() * 4 + 4, 0);
-
-        for r in self.restarts.iter() {
-            r.encode_fixed(&mut self.buffer[i..i + 4]);
-            i += 4;
-        }
-
-        // 2. Append N_RESTARTS
-        (self.restarts.len() as u32).encode_fixed(&mut self.buffer[i..i + 4]);
-
-        // done
-        self.buffer
-    }
-}
-
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use iterator::SSIterator;
-    use options::*;
+    use block_builder::BlockBuilder;
+    use options;
+    use test_util::{test_iterator_properties, SSIteratorIter};
+    use types::{current_key_val, SSIterator};
 
     fn get_data() -> Vec<(&'static [u8], &'static [u8])> {
-        vec![("key1".as_bytes(), "value1".as_bytes()),
-             ("loooooooooooooooooooooooooooooooooongerkey1".as_bytes(), "shrtvl1".as_bytes()),
-             ("medium length key 1".as_bytes(), "some value 2".as_bytes()),
-             ("prefix_key1".as_bytes(), "value".as_bytes()),
-             ("prefix_key2".as_bytes(), "value".as_bytes()),
-             ("prefix_key3".as_bytes(), "value".as_bytes())]
+        vec![
+            ("key1".as_bytes(), "value1".as_bytes()),
+            (
+                "loooooooooooooooooooooooooooooooooongerkey1".as_bytes(),
+                "shrtvl1".as_bytes(),
+            ),
+            ("medium length key 1".as_bytes(), "some value 2".as_bytes()),
+            ("prefix_key1".as_bytes(), "value".as_bytes()),
+            ("prefix_key2".as_bytes(), "value".as_bytes()),
+            ("prefix_key3".as_bytes(), "value".as_bytes()),
+        ]
     }
 
     #[test]
-    fn test_block_builder() {
-        let mut o = Options::default();
-        o.block_restart_interval = 3;
-
-        let mut builder = BlockBuilder::new(o);
-
-        for &(k, v) in get_data().iter() {
+    fn test_block_iterator_properties() {
+        let o = options::for_test();
+        let mut builder = BlockBuilder::new(o.clone());
+        let mut data = get_data();
+        data.truncate(4);
+        for &(k, v) in data.iter() {
             builder.add(k, v);
-            assert!(builder.counter <= 3);
-            assert_eq!(builder.last_key(), k);
         }
+        let block_contents = builder.finish();
 
-        let block = builder.finish();
-        assert_eq!(block.len(), 149);
+        let block = Block::new(o.clone(), block_contents).iter();
+        test_iterator_properties(block);
     }
 
     #[test]
     fn test_block_empty() {
-        let mut o = Options::default();
+        let mut o = options::for_test();
         o.block_restart_interval = 16;
         let builder = BlockBuilder::new(o);
 
@@ -436,9 +347,9 @@ mod tests {
         assert_eq!(blockc.len(), 8);
         assert_eq!(blockc, vec![0, 0, 0, 0, 1, 0, 0, 0]);
 
-        let block = Block::new(Options::default(), blockc);
+        let block = Block::new(options::for_test(), blockc);
 
-        for _ in block.iter() {
+        for _ in SSIteratorIter::wrap(&mut block.iter()) {
             panic!("expected 0 iterations");
         }
     }
@@ -446,19 +357,19 @@ mod tests {
     #[test]
     fn test_block_build_iterate() {
         let data = get_data();
-        let mut builder = BlockBuilder::new(Options::default());
+        let mut builder = BlockBuilder::new(options::for_test());
 
         for &(k, v) in data.iter() {
             builder.add(k, v);
         }
 
         let block_contents = builder.finish();
-        let block = Block::new(Options::default(), block_contents).iter();
+        let mut block = Block::new(options::for_test(), block_contents).iter();
         let mut i = 0;
 
         assert!(!block.valid());
 
-        for (k, v) in block {
+        for (k, v) in SSIteratorIter::wrap(&mut block) {
             assert_eq!(&k[..], data[i].0);
             assert_eq!(v, data[i].1);
             i += 1;
@@ -468,7 +379,7 @@ mod tests {
 
     #[test]
     fn test_block_iterate_reverse() {
-        let mut o = Options::default();
+        let mut o = options::for_test();
         o.block_restart_interval = 3;
         let data = get_data();
         let mut builder = BlockBuilder::new(o.clone());
@@ -481,33 +392,40 @@ mod tests {
         let mut block = Block::new(o.clone(), block_contents).iter();
 
         assert!(!block.valid());
-        assert_eq!(block.next(),
-                   Some(("key1".as_bytes().to_vec(), "value1".as_bytes().to_vec())));
+        assert_eq!(
+            block.next(),
+            Some(("key1".as_bytes().to_vec(), "value1".as_bytes().to_vec()))
+        );
         assert!(block.valid());
         block.next();
         assert!(block.valid());
         block.prev();
         assert!(block.valid());
-        assert_eq!(block.current(),
-                   Some(("key1".as_bytes().to_vec(), "value1".as_bytes().to_vec())));
+        assert_eq!(
+            current_key_val(&block),
+            Some(("key1".as_bytes().to_vec(), "value1".as_bytes().to_vec()))
+        );
         block.prev();
         assert!(!block.valid());
 
         // Verify that prev() from the last entry goes to the prev-to-last entry
         // (essentially, that next() returning None doesn't advance anything)
-
-        while let Some(_) = block.next() {
-        }
+        while let Some(_) = block.next() {}
 
         block.prev();
         assert!(block.valid());
-        assert_eq!(block.current(),
-                   Some(("prefix_key2".as_bytes().to_vec(), "value".as_bytes().to_vec())));
+        assert_eq!(
+            current_key_val(&block),
+            Some((
+                "prefix_key2".as_bytes().to_vec(),
+                "value".as_bytes().to_vec()
+            ))
+        );
     }
 
     #[test]
     fn test_block_seek() {
-        let mut o = Options::default();
+        let mut o = options::for_test();
         o.block_restart_interval = 3;
 
         let data = get_data();
@@ -523,33 +441,49 @@ mod tests {
 
         block.seek(&"prefix_key2".as_bytes());
         assert!(block.valid());
-        assert_eq!(block.current(),
-                   Some(("prefix_key2".as_bytes().to_vec(), "value".as_bytes().to_vec())));
+        assert_eq!(
+            current_key_val(&block),
+            Some((
+                "prefix_key2".as_bytes().to_vec(),
+                "value".as_bytes().to_vec()
+            ))
+        );
 
         block.seek(&"prefix_key0".as_bytes());
         assert!(block.valid());
-        assert_eq!(block.current(),
-                   Some(("prefix_key1".as_bytes().to_vec(), "value".as_bytes().to_vec())));
+        assert_eq!(
+            current_key_val(&block),
+            Some((
+                "prefix_key1".as_bytes().to_vec(),
+                "value".as_bytes().to_vec()
+            ))
+        );
 
         block.seek(&"key1".as_bytes());
         assert!(block.valid());
-        assert_eq!(block.current(),
-                   Some(("key1".as_bytes().to_vec(), "value1".as_bytes().to_vec())));
+        assert_eq!(
+            current_key_val(&block),
+            Some(("key1".as_bytes().to_vec(), "value1".as_bytes().to_vec()))
+        );
 
         block.seek(&"prefix_key3".as_bytes());
         assert!(block.valid());
-        assert_eq!(block.current(),
-                   Some(("prefix_key3".as_bytes().to_vec(), "value".as_bytes().to_vec())));
+        assert_eq!(
+            current_key_val(&block),
+            Some((
+                "prefix_key3".as_bytes().to_vec(),
+                "value".as_bytes().to_vec()
+            ))
+        );
 
         block.seek(&"prefix_key8".as_bytes());
-        assert!(block.valid());
-        assert_eq!(block.current(),
-                   Some(("prefix_key3".as_bytes().to_vec(), "value".as_bytes().to_vec())));
+        assert!(!block.valid());
+        assert_eq!(current_key_val(&block), None);
     }
 
     #[test]
     fn test_block_seek_to_last() {
-        let mut o = Options::default();
+        let mut o = options::for_test();
 
         // Test with different number of restarts
         for block_restart_interval in vec![2, 6, 10] {
@@ -568,8 +502,13 @@ mod tests {
 
             block.seek_to_last();
             assert!(block.valid());
-            assert_eq!(block.current(),
-                       Some(("prefix_key3".as_bytes().to_vec(), "value".as_bytes().to_vec())));
+            assert_eq!(
+                current_key_val(&block),
+                Some((
+                    "prefix_key3".as_bytes().to_vec(),
+                    "value".as_bytes().to_vec()
+                ))
+            );
         }
     }
 }

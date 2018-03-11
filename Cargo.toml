@@ -12,3 +12,7 @@ documentation = "https://docs.rs/sstable"
 [dependencies]
 crc = "1.2"
 integer-encoding = "1.0"
+snap = "0.2"
+
+[dev-dependencies]
+time-test = "0.2"

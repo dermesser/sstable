@@ -4,7 +4,7 @@ use integer_encoding::VarInt;
 /// used typically as file-internal pointer in table (SSTable) files. For example, the index block
 /// in an SSTable is a block of (key = largest key in block) -> (value = encoded blockhandle of
 /// block).
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BlockHandle {
     offset: usize,
     size: usize,
@@ -17,11 +17,13 @@ impl BlockHandle {
         let (off, offsize) = usize::decode_var(from);
         let (sz, szsize) = usize::decode_var(&from[offsize..]);
 
-        (BlockHandle {
-            offset: off,
-            size: sz,
-        },
-         offsize + szsize)
+        (
+            BlockHandle {
+                offset: off,
+                size: sz,
+            },
+            offsize + szsize,
+        )
     }
 
     pub fn new(offset: usize, size: usize) -> BlockHandle {
