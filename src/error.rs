@@ -27,7 +27,7 @@ pub enum StatusCode {
 }
 
 /// Status encapsulates a `StatusCode` and an error message. It can be displayed, and also
-/// implements `Error`.
+/// implements `Error`. io::Error can be converted into Status.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Status {
     pub code: StatusCode,
@@ -70,14 +70,6 @@ impl Status {
     }
 }
 
-/// LevelDB's result type
-pub type Result<T> = result::Result<T, Status>;
-
-/// err returns a new Status wrapped in a Result.
-pub fn err<T>(code: StatusCode, msg: &str) -> Result<T> {
-    Err(Status::new(code, msg))
-}
-
 impl From<io::Error> for Status {
     fn from(e: io::Error) -> Status {
         let c = match e.kind() {
@@ -106,3 +98,12 @@ impl From<snap::Error> for Status {
         }
     }
 }
+
+/// The sstable result type.
+pub type Result<T> = result::Result<T, Status>;
+
+/// err returns a new Status wrapped in a Result.
+pub fn err<T>(code: StatusCode, msg: &str) -> Result<T> {
+    Err(Status::new(code, msg))
+}
+

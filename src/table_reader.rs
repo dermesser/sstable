@@ -22,6 +22,7 @@ fn read_footer(f: &RandomAccess, size: usize) -> Result<Footer> {
     Ok(Footer::decode(&buf))
 }
 
+/// `Table` is used for accessing SSTables.
 #[derive(Clone)]
 pub struct Table {
     file: Rc<Box<RandomAccess>>,
@@ -148,7 +149,8 @@ impl Table {
         return self.footer.meta_index.offset();
     }
 
-    /// Iterators read from the file; thus only one iterator can be borrowed (mutably) per scope
+    /// Returns an iterator over an SSTable. Iterators hold internal references to the table, so
+    /// make sure to let them expire when not needed anymore.
     pub fn iter(&self) -> TableIterator {
         let iter = TableIterator {
             current_block: None,
