@@ -32,7 +32,7 @@ fn write_table(p: &Path) -> Result<()> {
     Ok(())
 }
 
-fn read_table(p: &Path) -> Result<()> {
+fn read_table(p: &Path) -> Result<sstable::Table> {
     let tr = sstable::Table::new_from_file(sstable::Options::default(), p)?;
     let mut iter = tr.iter();
     while iter.advance() {
@@ -43,12 +43,22 @@ fn read_table(p: &Path) -> Result<()> {
             String::from_utf8(v).unwrap()
         );
     }
-    Ok(())
+    Ok(tr)
+}
+
+fn lookup(t: &sstable::Table, key: &str) -> Result<Option<String>> {
+    Ok(t.get(key.as_bytes())?.map(|v| unsafe { String::from_utf8_unchecked(v) }))
 }
 
 fn main() {
     let path = PathBuf::from("/tmp/some.random.sstable");
     // Read a couple key/value pairs to a table in /tmp and read them back.
     write_table(&path).expect("writing the table failed");
-    read_table(&path).expect("Reading the table failed");
+    let tr = read_table(&path).expect("Reading the table failed");
+
+    println!("=== lookups ===");
+    println!("{} => {:?}", "000", lookup(&tr, "000").unwrap());
+    println!("{} => {:?}", "def", lookup(&tr, "def").unwrap());
+    println!("{} => {:?}", "zzy", lookup(&tr, "zzy").unwrap());
+    println!("{} => {:?}", "zzz", lookup(&tr, "zzz").unwrap());
 }

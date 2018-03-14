@@ -10,7 +10,7 @@ The general process is
 * Writing a table, using `TableBuilder`. The entries have to be added in
   sorted order. The data doesn't have to be written to disk; any type
   implementing `Write` works.
-* Reading a table, using `TableReader`. Again, the source is generic; any type
+* Reading a table, using `Table`. Again, the source is generic; any type
   implementing `Read + Seek` can be used.
 
 Note that the tables and some other structures are generic over the ordering of
