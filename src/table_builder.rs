@@ -122,6 +122,17 @@ impl<Dst: Write> TableBuilder<Dst> {
         self.num_entries
     }
 
+    #[allow(unused)]
+    fn size_estimate(&self) -> usize {
+        let mut size = 0;
+        size += self.data_block.as_ref().map(|b| b.size_estimate()).unwrap_or(0);
+        size += self.index_block.as_ref().map(|b| b.size_estimate()).unwrap_or(0);
+        size += self.filter_block.as_ref().map(|b| b.size_estimate()).unwrap_or(0);
+        size += self.offset;
+        size += FULL_FOOTER_LENGTH;
+        size
+    }
+
     /// Add a key to the table. The key must be lexically greater or equal to the one that was
     /// previously added.
     pub fn add(&mut self, key: &[u8], val: &[u8]) -> Result<()> {

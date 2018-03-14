@@ -161,18 +161,10 @@ impl Table {
         iter
     }
 
-    /// Retrieve next-biggest entry for key from table. This function uses the attached filters, so
+    /// Retrieve an entry for a key from the table. This function uses the attached filters, so
     /// is better suited if you frequently look for non-existing values (as it will detect the
     /// non-existence of an entry in a block without having to load the block).
-    ///
-    /// The caller must check if the returned key, which is the raw key (not e.g. the user portion
-    /// of an InternalKey) is acceptable (e.g. correct value type or sequence number), as it may
-    /// not be an exact match for key.
-    ///
-    /// This is done this way because some key types, like internal keys, will not result in an
-    /// exact match; it depends on other comparators than the one that the table reader knows
-    /// whether a match is acceptable.
-    pub fn get(&self, key: &[u8]) -> Result<Option<(Vec<u8>, Vec<u8>)>> {
+    pub fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
         let mut index_iter = self.indexblock.iter();
         index_iter.seek(key);
 
@@ -203,8 +195,8 @@ impl Table {
         // Go to entry and check if it's the wanted entry.
         iter.seek(key);
         if let Some((k, v)) = current_key_val(&iter) {
-            if self.opt.cmp.cmp(&k, key) >= Ordering::Equal {
-                return Ok(Some((k, v)));
+            if self.opt.cmp.cmp(&k, key) == Ordering::Equal {
+                return Ok(Some(v));
             }
         }
         Ok(None)
@@ -628,7 +620,7 @@ mod tests {
         // Test that all of the table's entries are reachable via get()
         for (k, v) in SSIteratorIter::wrap(&mut _iter) {
             let r = table2.get(&k);
-            assert_eq!(Ok(Some((k, v))), r);
+            assert_eq!(Ok(Some(v)), r);
         }
 
         assert_eq!(table.opt.block_cache.borrow().count(), 3);
@@ -639,6 +631,7 @@ mod tests {
         assert!(table.get(b"aa").unwrap().is_none());
         assert!(table.get(b"abcd").unwrap().is_none());
         assert!(table.get(b"abb").unwrap().is_none());
+        assert!(table.get(b"xyy").unwrap().is_none());
         assert!(table.get(b"zzy").unwrap().is_none());
         assert!(table.get(b"zz1").unwrap().is_none());
         assert!(table.get("zz{".as_bytes()).unwrap().is_none());
