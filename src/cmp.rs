@@ -35,11 +35,7 @@ impl Cmp for DefaultCmp {
             return a.to_vec();
         }
 
-        let min = if a.len() < b.len() {
-            a.len()
-        } else {
-            b.len()
-        };
+        let min = if a.len() < b.len() { a.len() } else { b.len() };
         let mut diff_at = 0;
 
         while diff_at < min && a[diff_at] == b[diff_at] {
@@ -59,9 +55,12 @@ impl Cmp for DefaultCmp {
         }
         // Backup case: either `a` is full of 0xff, or all different places are less than 2
         // characters apart.
-        // The result is not necessarily short, but a good separator.
-        let mut sep = a.to_vec();
-        sep[a.len() - 1] += 1;
+        // The result is not necessarily short, but a good separator: e.g., "abc" vs "abd" ->
+        // "abc\0", which is greater than "abc" and lesser than "abd".
+        let mut sep = Vec::with_capacity(a.len() + 1);
+        sep.extend_from_slice(a);
+        // Append a 0 byte; by making it longer than a, it will compare greater to it.
+        sep.extend_from_slice(&[0]);
         return sep;
     }
 
@@ -86,54 +85,32 @@ mod tests {
 
     #[test]
     fn test_cmp_defaultcmp_shortest_sep() {
-        assert_eq!(
-            DefaultCmp.find_shortest_sep("abcd".as_bytes(), "abcf".as_bytes()),
-            "abce".as_bytes()
-        );
-        assert_eq!(
-            DefaultCmp.find_shortest_sep("abc".as_bytes(), "acd".as_bytes()),
-            "abd".as_bytes()
-        );
-        assert_eq!(
-            DefaultCmp.find_shortest_sep("abcdefghi".as_bytes(), "abcffghi".as_bytes()),
-            "abce".as_bytes()
-        );
-        assert_eq!(
-            DefaultCmp.find_shortest_sep("a".as_bytes(), "a".as_bytes()),
-            "a".as_bytes()
-        );
-        assert_eq!(
-            DefaultCmp.find_shortest_sep("a".as_bytes(), "b".as_bytes()),
-            "b".as_bytes()
-        );
-        assert_eq!(
-            DefaultCmp.find_shortest_sep("abc".as_bytes(), "zzz".as_bytes()),
-            "b".as_bytes()
-        );
-        assert_eq!(
-            DefaultCmp.find_shortest_sep("yyy".as_bytes(), "z".as_bytes()),
-            "yyz".as_bytes()
-        );
-        assert_eq!(
-            DefaultCmp.find_shortest_sep("".as_bytes(), "".as_bytes()),
-            "".as_bytes()
-        );
+        assert_eq!(DefaultCmp.find_shortest_sep("abcd".as_bytes(), "abcf".as_bytes()),
+                   "abce".as_bytes());
+        assert_eq!(DefaultCmp.find_shortest_sep("abc".as_bytes(), "acd".as_bytes()),
+                   "abc\0".as_bytes());
+        assert_eq!(DefaultCmp.find_shortest_sep("abcdefghi".as_bytes(), "abcffghi".as_bytes()),
+                   "abce".as_bytes());
+        assert_eq!(DefaultCmp.find_shortest_sep("a".as_bytes(), "a".as_bytes()),
+                   "a".as_bytes());
+        assert_eq!(DefaultCmp.find_shortest_sep("a".as_bytes(), "b".as_bytes()),
+                   "a\0".as_bytes());
+        assert_eq!(DefaultCmp.find_shortest_sep("abc".as_bytes(), "zzz".as_bytes()),
+                   "b".as_bytes());
+        assert_eq!(DefaultCmp.find_shortest_sep("yyy".as_bytes(), "z".as_bytes()),
+                   "yyy\0".as_bytes());
+        assert_eq!(DefaultCmp.find_shortest_sep("".as_bytes(), "".as_bytes()),
+                   "".as_bytes());
     }
 
     #[test]
     fn test_cmp_defaultcmp_short_succ() {
-        assert_eq!(
-            DefaultCmp.find_short_succ("abcd".as_bytes()),
-            "b".as_bytes()
-        );
-        assert_eq!(
-            DefaultCmp.find_short_succ("zzzz".as_bytes()),
-            "{".as_bytes()
-        );
+        assert_eq!(DefaultCmp.find_short_succ("abcd".as_bytes()),
+                   "b".as_bytes());
+        assert_eq!(DefaultCmp.find_short_succ("zzzz".as_bytes()),
+                   "{".as_bytes());
         assert_eq!(DefaultCmp.find_short_succ(&[]), &[0xff]);
-        assert_eq!(
-            DefaultCmp.find_short_succ(&[0xff, 0xff, 0xff]),
-            &[0xff, 0xff, 0xff, 0xff]
-        );
+        assert_eq!(DefaultCmp.find_short_succ(&[0xff, 0xff, 0xff]),
+                   &[0xff, 0xff, 0xff, 0xff]);
     }
 }
