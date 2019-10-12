@@ -16,7 +16,7 @@ use std::rc::Rc;
 use integer_encoding::FixedIntWriter;
 
 /// Reads the table footer.
-fn read_footer(f: &RandomAccess, size: usize) -> Result<Footer> {
+fn read_footer(f: &dyn RandomAccess, size: usize) -> Result<Footer> {
     let mut buf = vec![0; table_builder::FULL_FOOTER_LENGTH];
     f.read_at(size - table_builder::FULL_FOOTER_LENGTH, &mut buf)?;
     Ok(Footer::decode(&buf))
@@ -25,7 +25,7 @@ fn read_footer(f: &RandomAccess, size: usize) -> Result<Footer> {
 /// `Table` is used for accessing SSTables.
 #[derive(Clone)]
 pub struct Table {
-    file: Rc<Box<RandomAccess>>,
+    file: Rc<Box<dyn RandomAccess>>,
     file_size: usize,
     cache_id: cache::CacheID,
 
@@ -45,7 +45,7 @@ impl Table {
     }
 
     /// Creates a new table reader.
-    pub fn new(opt: Options, file: Box<RandomAccess>, size: usize) -> Result<Table> {
+    pub fn new(opt: Options, file: Box<dyn RandomAccess>, size: usize) -> Result<Table> {
         let footer = try!(read_footer(file.as_ref(), size));
         let indexblock = try!(table_block::read_table_block(
             opt.clone(),
@@ -74,7 +74,7 @@ impl Table {
 
     fn read_filter_block(
         metaix: &Block,
-        file: &RandomAccess,
+        file: &dyn RandomAccess,
         options: &Options,
     ) -> Result<Option<FilterBlockReader>> {
         // Open filter block for reading

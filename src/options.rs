@@ -33,7 +33,7 @@ pub fn int_to_compressiontype(i: u32) -> Option<CompressionType> {
 /// self-explanatory; the defaults are defined in the `Default` implementation.
 #[derive(Clone)]
 pub struct Options {
-    pub cmp: Rc<Box<Cmp>>,
+    pub cmp: Rc<Box<dyn Cmp>>,
     pub write_buffer_size: usize,
     pub block_cache: Shared<Cache<Block>>,
     pub block_size: usize,

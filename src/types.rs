@@ -33,7 +33,7 @@ impl RandomAccess for BufferBackedFile {
 
 impl RandomAccess for File {
     fn read_at(&self, off: usize, dst: &mut [u8]) -> Result<usize> {
-        Ok((self as &FileExt).read_at(dst, off as u64)?)
+        Ok((self as &dyn FileExt).read_at(dst, off as u64)?)
     }
 }
 
@@ -106,7 +106,7 @@ pub fn current_key_val<It: SSIterator + ?Sized>(it: &It) -> Option<(Vec<u8>, Vec
     }
 }
 
-impl SSIterator for Box<SSIterator> {
+impl SSIterator for Box<dyn SSIterator> {
     fn advance(&mut self) -> bool {
         self.as_mut().advance()
     }
