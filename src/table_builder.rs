@@ -309,7 +309,10 @@ mod tests {
         assert!(b.filter_block.is_some());
 
         let actual = b.finish().unwrap();
-        assert_eq!(223, actual);
+        // Ensure that something has been written
+        assert!(!d.is_empty());
+        // The returned length should be the same as the data size
+        assert_eq!(d.len(), actual);
     }
 
     #[test]
