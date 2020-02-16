@@ -4,7 +4,10 @@ use error::Result;
 
 use std::cell::RefCell;
 use std::fs::File;
+#[cfg(unix)]
 use std::os::unix::fs::FileExt;
+#[cfg(windows)]
+use std::os::windows::fs::FileExt;
 use std::rc::Rc;
 
 pub trait RandomAccess {
@@ -31,9 +34,17 @@ impl RandomAccess for BufferBackedFile {
     }
 }
 
+#[cfg(unix)]
 impl RandomAccess for File {
     fn read_at(&self, off: usize, dst: &mut [u8]) -> Result<usize> {
         Ok((self as &dyn FileExt).read_at(dst, off as u64)?)
+    }
+}
+
+#[cfg(windows)]
+impl RandomAccess for File {
+    fn read_at(&self, off: usize, dst: &mut [u8]) -> Result<usize> {
+        Ok((self as &dyn FileExt).seek_read(dst, off as u64)?)
     }
 }
 
