@@ -668,5 +668,4 @@ mod tests {
             panic!("Should have hit 5th record in table!");
         }
     }
-
 }

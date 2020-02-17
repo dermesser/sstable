@@ -1,5 +1,5 @@
-use types::{current_key_val, SSIterator};
 use cmp::{Cmp, DefaultCmp};
+use types::{current_key_val, SSIterator};
 
 use std::cmp::Ordering;
 

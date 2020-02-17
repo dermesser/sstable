@@ -23,9 +23,9 @@ mod table_reader;
 pub use cmp::{Cmp, DefaultCmp};
 pub use error::{Result, Status, StatusCode};
 pub use options::{CompressionType, Options};
-pub use types::{current_key_val, SSIterator};
 pub use table_builder::TableBuilder;
 pub use table_reader::{Table, TableIterator};
+pub use types::{current_key_val, SSIterator};
 
 #[cfg(test)]
 mod test_util;
