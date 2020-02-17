@@ -10,7 +10,7 @@ use std::os::windows::fs::FileExt;
 use std::sync::Arc;
 use std::sync::RwLock;
 
-pub trait RandomAccess : Send {
+pub trait RandomAccess : Send + Sync {
     fn read_at(&self, off: usize, dst: &mut [u8]) -> Result<usize>;
 }
 
@@ -48,7 +48,7 @@ impl RandomAccess for File {
     }
 }
 
-/// A shared thingy with interior mutability.
+/// A shared thingy with guarded by a lock.
 pub type Shared<T> = Arc<RwLock<T>>;
 
 pub fn share<T>(t: T) -> Arc<RwLock<T>> {

@@ -152,6 +152,7 @@ impl<T> LRUList<T> {
     }
 }
 
+
 pub type CacheKey = [u8; 16];
 pub type CacheID = u64;
 type CacheEntry<T> = (T, LRUHandle<CacheKey>);
@@ -236,6 +237,16 @@ impl<T> Cache<T> {
         }
     }
 }
+
+
+// The compiler does not automatically derive Send and Sync for Cache because it contains
+// raw pointers.
+// These raw pointers are only pointing to the elements hold in the same cache and insertion
+// clones the values. It is therefore safe to implement Send for Cache.
+// Since all functions that access these raw pointers are mutable member functions, it is also safe to implement Sync
+// (Sync is defined as "if &T is Send-able")
+unsafe impl<T: Send> Send for Cache<T> {}
+unsafe impl<T: Sync> Sync for Cache<T> {}
 
 #[cfg(test)]
 mod tests {
