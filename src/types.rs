@@ -8,9 +8,9 @@ use std::fs::File;
 use std::os::unix::fs::FileExt;
 #[cfg(windows)]
 use std::os::windows::fs::FileExt;
-use std::rc::Rc;
+use std::sync::Arc;
 
-pub trait RandomAccess {
+pub trait RandomAccess : Send {
     fn read_at(&self, off: usize, dst: &mut [u8]) -> Result<usize>;
 }
 
@@ -49,10 +49,10 @@ impl RandomAccess for File {
 }
 
 /// A shared thingy with interior mutability.
-pub type Shared<T> = Rc<RefCell<T>>;
+pub type Shared<T> = Arc<RefCell<T>>;
 
-pub fn share<T>(t: T) -> Rc<RefCell<T>> {
-    Rc::new(RefCell::new(t))
+pub fn share<T>(t: T) -> Arc<RefCell<T>> {
+    Arc::new(RefCell::new(t))
 }
 
 /// An extension of the standard `Iterator` trait that supporting some additional functionality.

@@ -11,7 +11,7 @@ use crate::types::{current_key_val, RandomAccess, SSIterator};
 use std::cmp::Ordering;
 use std::fs;
 use std::path;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use integer_encoding::FixedIntWriter;
 
@@ -25,7 +25,7 @@ fn read_footer(f: &dyn RandomAccess, size: usize) -> Result<Footer> {
 /// `Table` is used for accessing SSTables.
 #[derive(Clone)]
 pub struct Table {
-    file: Rc<Box<dyn RandomAccess>>,
+    file: Arc<Box<dyn RandomAccess>>,
     file_size: usize,
     cache_id: cache::CacheID,
 
@@ -55,7 +55,7 @@ impl Table {
         let cache_id = opt.block_cache.borrow_mut().new_cache_id();
 
         Ok(Table {
-            file: Rc::new(file),
+            file: Arc::new(file),
             file_size: size,
             cache_id: cache_id,
             opt: opt,
