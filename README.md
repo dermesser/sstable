@@ -1,5 +1,9 @@
 # sstable
 
+[![crates.io](https://img.shields.io/crates/v/sstable.svg)](https://crates.io/crates/sstable)
+[![Travis
+CI](https://api.travis-ci.org/dermesser/sstable.svg?branch=master)](https://api.travis-ci.org/dermesser/sstable)
+
 [Documentation](https://docs.rs/sstable)
 
 This crate provides an API to work with immutable (string -> string) maps stored
