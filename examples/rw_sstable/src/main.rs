@@ -47,7 +47,8 @@ fn read_table(p: &Path) -> Result<sstable::Table> {
 }
 
 fn lookup(t: &sstable::Table, key: &str) -> Result<Option<String>> {
-    Ok(t.get(key.as_bytes())?.map(|v| unsafe { String::from_utf8_unchecked(v) }))
+    Ok(t.get(key.as_bytes())?
+        .map(|v| unsafe { String::from_utf8_unchecked(v) }))
 }
 
 fn main() {

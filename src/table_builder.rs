@@ -125,9 +125,21 @@ impl<Dst: Write> TableBuilder<Dst> {
     #[allow(unused)]
     fn size_estimate(&self) -> usize {
         let mut size = 0;
-        size += self.data_block.as_ref().map(|b| b.size_estimate()).unwrap_or(0);
-        size += self.index_block.as_ref().map(|b| b.size_estimate()).unwrap_or(0);
-        size += self.filter_block.as_ref().map(|b| b.size_estimate()).unwrap_or(0);
+        size += self
+            .data_block
+            .as_ref()
+            .map(|b| b.size_estimate())
+            .unwrap_or(0);
+        size += self
+            .index_block
+            .as_ref()
+            .map(|b| b.size_estimate())
+            .unwrap_or(0);
+        size += self
+            .filter_block
+            .as_ref()
+            .map(|b| b.size_estimate())
+            .unwrap_or(0);
         size += self.offset;
         size += FULL_FOOTER_LENGTH;
         size
@@ -217,7 +229,8 @@ impl<Dst: Write> TableBuilder<Dst> {
         // If there's a pending data block, write it
         if self.data_block.as_ref().unwrap().entries() > 0 {
             // Find a key reliably past the last key
-            let key_past_last = self.opt
+            let key_past_last = self
+                .opt
                 .cmp
                 .find_short_succ(self.data_block.as_ref().unwrap().last_key());
             self.write_data_block(&key_past_last)?;

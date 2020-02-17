@@ -106,4 +106,3 @@ pub type Result<T> = result::Result<T, Status>;
 pub fn err<T>(code: StatusCode, msg: &str) -> Result<T> {
     Err(Status::new(code, msg))
 }
-
