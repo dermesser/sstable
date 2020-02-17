@@ -6,6 +6,8 @@ CI](https://api.travis-ci.org/dermesser/sstable.svg?branch=master)](https://api.
 
 [Documentation](https://docs.rs/sstable)
 
+## What
+
 This crate provides an API to work with immutable (string -> string) maps stored
 on disk. The main access method are iterators, but there's a simpler API, too.
 
@@ -27,4 +29,14 @@ If there's data corruption in the files on disk, defective blocks will be
 skipped. How many entries a single block contains depends on the block size,
 which can be set in the `Options` struct.
 
-Contributions are very welcome!
+## Why
+
+This crate reuses code originally written for the persistence part of
+[rusty-leveldb](https://crates.io/crates/rusty-leveldb), a reimplementation of
+Google's LevelDB in Rust. That's the reason for the code being a bit more
+complicated than needed at some points.
+
+## Contribute
+
+Contributions are very welcome! Feel free to send pull requests.
+
