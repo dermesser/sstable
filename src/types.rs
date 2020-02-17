@@ -2,13 +2,13 @@
 
 use crate::error::Result;
 
-use std::cell::RefCell;
 use std::fs::File;
 #[cfg(unix)]
 use std::os::unix::fs::FileExt;
 #[cfg(windows)]
 use std::os::windows::fs::FileExt;
 use std::sync::Arc;
+use std::sync::RwLock;
 
 pub trait RandomAccess : Send {
     fn read_at(&self, off: usize, dst: &mut [u8]) -> Result<usize>;
@@ -49,10 +49,10 @@ impl RandomAccess for File {
 }
 
 /// A shared thingy with interior mutability.
-pub type Shared<T> = Arc<RefCell<T>>;
+pub type Shared<T> = Arc<RwLock<T>>;
 
-pub fn share<T>(t: T) -> Arc<RefCell<T>> {
-    Arc::new(RefCell::new(t))
+pub fn share<T>(t: T) -> Arc<RwLock<T>> {
+    Arc::new(RwLock::new(t))
 }
 
 /// An extension of the standard `Iterator` trait that supporting some additional functionality.

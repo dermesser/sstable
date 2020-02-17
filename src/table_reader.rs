@@ -15,6 +15,8 @@ use std::sync::Arc;
 
 use integer_encoding::FixedIntWriter;
 
+const LOCK_POISONED: &str = "Lock poisoned";
+
 /// Reads the table footer.
 fn read_footer(f: &dyn RandomAccess, size: usize) -> Result<Footer> {
     let mut buf = vec![0; table_builder::FULL_FOOTER_LENGTH];
@@ -52,7 +54,10 @@ impl Table {
             table_block::read_table_block(opt.clone(), file.as_ref(), &footer.meta_index)?;
 
         let filter_block_reader = Table::read_filter_block(&metaindex_block, file.as_ref(), &opt)?;
-        let cache_id = opt.block_cache.borrow_mut().new_cache_id();
+        let cache_id = {
+            let mut block_cache = opt.block_cache.write().expect(LOCK_POISONED);
+            block_cache.new_cache_id()
+        };
 
         Ok(Table {
             file: Arc::new(file),
@@ -108,7 +113,8 @@ impl Table {
     /// cache.
     fn read_block(&self, location: &BlockHandle) -> Result<Block> {
         let cachekey = self.block_cache_handle(location.offset());
-        if let Some(block) = self.opt.block_cache.borrow_mut().get(&cachekey) {
+        let mut block_cache = self.opt.block_cache.write().expect(LOCK_POISONED);
+        if let Some(block) = block_cache.get(&cachekey) {
             return Ok(block.clone());
         }
 
@@ -116,11 +122,8 @@ impl Table {
         let b =
             table_block::read_table_block(self.opt.clone(), self.file.as_ref().as_ref(), location)?;
 
-        // insert a cheap copy (Rc).
-        self.opt
-            .block_cache
-            .borrow_mut()
-            .insert(&cachekey, b.clone());
+        // insert a cheap copy (Arc).
+        block_cache.insert(&cachekey, b.clone());
 
         Ok(b)
     }
@@ -417,15 +420,17 @@ mod tests {
         let mut iter = table.iter();
 
         // index/metaindex blocks are not cached. That'd be a waste of memory.
-        assert_eq!(opt.block_cache.borrow().count(), 0);
+        assert_eq!(opt.block_cache.read().expect(LOCK_POISONED).count(), 0);
+    
         iter.next();
-        assert_eq!(opt.block_cache.borrow().count(), 1);
+        assert_eq!(opt.block_cache.read().expect(LOCK_POISONED).count(), 1);
+    
         // This may fail if block parameters or data change. In that case, adapt it.
         iter.next();
         iter.next();
         iter.next();
         iter.next();
-        assert_eq!(opt.block_cache.borrow().count(), 2);
+        assert_eq!(opt.block_cache.read().expect(LOCK_POISONED).count(), 2);
     }
 
     #[test]
@@ -613,7 +618,7 @@ mod tests {
             assert_eq!(Ok(Some(v)), r);
         }
 
-        assert_eq!(table.opt.block_cache.borrow().count(), 3);
+        assert_eq!(table.opt.block_cache.read().expect(LOCK_POISONED).count(), 3);
 
         // test that filters work and don't return anything at all.
         assert!(table.get(b"aaa").unwrap().is_none());
