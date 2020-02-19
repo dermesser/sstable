@@ -26,5 +26,3 @@ pub use crate::types::{current_key_val, SSIterator};
 
 #[cfg(test)]
 mod test_util;
-#[cfg(test)]
-mod benchmark;

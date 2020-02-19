@@ -8,6 +8,7 @@ repository = "https://github.com/dermesser/sstable"
 authors = ["Lewin Bormann <lbo@spheniscida.de>"]
 license = "MIT"
 documentation = "https://docs.rs/sstable"
+edition = "2018"
 
 [dependencies]
 crc = "1.2"
@@ -16,6 +17,12 @@ snap = "0.2"
 
 [dev-dependencies]
 time-test = "0.2"
+bencher = "0.1"
+rand = "0.7"
+
+[[bench]]
+name = "sstable"
+harness = false
 
 [workspace]
 members = ["examples/rw_sstable"]
