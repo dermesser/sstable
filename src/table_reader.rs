@@ -32,7 +32,7 @@ pub struct Table {
     opt: Options,
 
     footer: Footer,
-    indexblock: Block,
+    index_block: Block,
     filters: Option<FilterBlockReader>,
 }
 
@@ -47,11 +47,11 @@ impl Table {
     /// Creates a new table reader.
     pub fn new(opt: Options, file: Box<dyn RandomAccess>, size: usize) -> Result<Table> {
         let footer = read_footer(file.as_ref(), size)?;
-        let indexblock = table_block::read_table_block(opt.clone(), file.as_ref(), &footer.index)?;
-        let metaindexblock =
+        let index_block = table_block::read_table_block(opt.clone(), file.as_ref(), &footer.index)?;
+        let metaindex_block =
             table_block::read_table_block(opt.clone(), file.as_ref(), &footer.meta_index)?;
 
-        let filter_block_reader = Table::read_filter_block(&metaindexblock, file.as_ref(), &opt)?;
+        let filter_block_reader = Table::read_filter_block(&metaindex_block, file.as_ref(), &opt)?;
         let cache_id = opt.block_cache.borrow_mut().new_cache_id();
 
         Ok(Table {
@@ -61,7 +61,7 @@ impl Table {
             opt: opt,
             footer: footer,
             filters: filter_block_reader,
-            indexblock: indexblock,
+            index_block: index_block,
         })
     }
 
@@ -127,7 +127,7 @@ impl Table {
 
     /// Returns the offset of the block that contains `key`.
     pub fn approx_offset_of(&self, key: &[u8]) -> usize {
-        let mut iter = self.indexblock.iter();
+        let mut iter = self.index_block.iter();
 
         iter.seek(key);
 
@@ -145,7 +145,7 @@ impl Table {
         let iter = TableIterator {
             current_block: None,
             current_block_off: 0,
-            index_block: self.indexblock.iter(),
+            index_block: self.index_block.iter(),
             table: self.clone(),
         };
         iter
@@ -155,7 +155,7 @@ impl Table {
     /// is better suited if you frequently look for non-existing values (as it will detect the
     /// non-existence of an entry in a block without having to load the block).
     pub fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
-        let mut index_iter = self.indexblock.iter();
+        let mut index_iter = self.index_block.iter();
         index_iter.seek(key);
 
         let handle;
