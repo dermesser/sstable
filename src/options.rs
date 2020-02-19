@@ -1,8 +1,8 @@
-use block::Block;
-use cache::Cache;
-use cmp::{Cmp, DefaultCmp};
-use filter;
-use types::{share, Shared};
+use crate::block::Block;
+use crate::cache::Cache;
+use crate::cmp::{Cmp, DefaultCmp};
+use crate::filter;
+use crate::types::{share, Shared};
 
 use std::default::Default;
 use std::rc::Rc;

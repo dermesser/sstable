@@ -1,6 +1,6 @@
 //! A collection of fundamental and/or simple types used by other modules. A bit of a grab bag :-)
 
-use error::Result;
+use crate::error::Result;
 
 use std::cell::RefCell;
 use std::fs::File;

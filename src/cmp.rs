@@ -4,13 +4,13 @@ use std::cmp::Ordering;
 /// top of an inner comparator)
 pub trait Cmp {
     /// Compare to byte strings, bytewise.
-    fn cmp(&self, &[u8], &[u8]) -> Ordering;
+    fn cmp(&self, _: &[u8], _: &[u8]) -> Ordering;
 
     /// Return the shortest byte string that compares "Greater" to the first argument and "Less" to
     /// the second one.
-    fn find_shortest_sep(&self, &[u8], &[u8]) -> Vec<u8>;
+    fn find_shortest_sep(&self, _: &[u8], _: &[u8]) -> Vec<u8>;
     /// Return the shortest byte string that compares "Greater" to the argument.
-    fn find_short_succ(&self, &[u8]) -> Vec<u8>;
+    fn find_short_succ(&self, _: &[u8]) -> Vec<u8>;
 
     /// A unique identifier for a comparator. A comparator wrapper (like InternalKeyCmp) may
     /// return the id of its inner comparator.

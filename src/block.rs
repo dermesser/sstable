@@ -2,8 +2,8 @@ use std::cmp::Ordering;
 
 use std::rc::Rc;
 
-use options::Options;
-use types::SSIterator;
+use crate::options::Options;
+use crate::types::SSIterator;
 
 use integer_encoding::FixedInt;
 use integer_encoding::VarInt;
@@ -303,9 +303,9 @@ impl SSIterator for BlockIter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use block_builder::BlockBuilder;
-    use test_util::{test_iterator_properties, SSIteratorIter};
-    use types::{current_key_val, SSIterator};
+    use crate::block_builder::BlockBuilder;
+    use crate::test_util::{test_iterator_properties, SSIteratorIter};
+    use crate::types::{current_key_val, SSIterator};
 
     fn get_data() -> Vec<(&'static [u8], &'static [u8])> {
         vec![

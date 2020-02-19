@@ -1,12 +1,12 @@
-use block::{Block, BlockIter};
-use blockhandle::BlockHandle;
-use cache;
-use error::Result;
-use filter_block::FilterBlockReader;
-use options::Options;
-use table_block;
-use table_builder::{self, Footer};
-use types::{current_key_val, RandomAccess, SSIterator};
+use crate::block::{Block, BlockIter};
+use crate::blockhandle::BlockHandle;
+use crate::cache;
+use crate::error::Result;
+use crate::filter_block::FilterBlockReader;
+use crate::options::Options;
+use crate::table_block;
+use crate::table_builder::{self, Footer};
+use crate::types::{current_key_val, RandomAccess, SSIterator};
 
 use std::cmp::Ordering;
 use std::fs;
@@ -338,10 +338,10 @@ impl SSIterator for TableIterator {
 
 #[cfg(test)]
 mod tests {
-    use options::CompressionType;
-    use table_builder::TableBuilder;
-    use test_util::{test_iterator_properties, SSIteratorIter};
-    use types::{current_key_val, SSIterator};
+    use crate::options::CompressionType;
+    use crate::table_builder::TableBuilder;
+    use crate::test_util::{test_iterator_properties, SSIteratorIter};
+    use crate::types::{current_key_val, SSIterator};
 
     use super::*;
 

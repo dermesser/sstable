@@ -1,11 +1,11 @@
-use block::BlockContents;
-use block_builder::BlockBuilder;
-use blockhandle::BlockHandle;
-use error::Result;
-use filter::NoFilterPolicy;
-use filter_block::FilterBlockBuilder;
-use options::{CompressionType, Options};
-use types::mask_crc;
+use crate::block::BlockContents;
+use crate::block_builder::BlockBuilder;
+use crate::blockhandle::BlockHandle;
+use crate::error::Result;
+use crate::filter::NoFilterPolicy;
+use crate::filter_block::FilterBlockBuilder;
+use crate::options::{CompressionType, Options};
+use crate::types::mask_crc;
 
 use std::cmp::Ordering;
 use std::io::Write;
@@ -274,7 +274,7 @@ impl<Dst: Write> TableBuilder<Dst> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use blockhandle::BlockHandle;
+    use crate::blockhandle::BlockHandle;
 
     #[test]
     fn test_footer() {

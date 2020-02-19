@@ -1,6 +1,3 @@
-extern crate crc;
-extern crate integer_encoding;
-extern crate snap;
 #[cfg(test)]
 #[macro_use]
 extern crate time_test;
@@ -20,12 +17,14 @@ mod options;
 mod table_builder;
 mod table_reader;
 
-pub use cmp::{Cmp, DefaultCmp};
-pub use error::{Result, Status, StatusCode};
-pub use options::{CompressionType, Options};
-pub use table_builder::TableBuilder;
-pub use table_reader::{Table, TableIterator};
-pub use types::{current_key_val, SSIterator};
+pub use crate::cmp::{Cmp, DefaultCmp};
+pub use crate::error::{Result, Status, StatusCode};
+pub use crate::options::{CompressionType, Options};
+pub use crate::table_builder::TableBuilder;
+pub use crate::table_reader::{Table, TableIterator};
+pub use crate::types::{current_key_val, SSIterator};
 
 #[cfg(test)]
 mod test_util;
+#[cfg(test)]
+mod benchmark;
