@@ -169,42 +169,6 @@ impl FilterPolicy for BloomPolicy {
     }
 }
 
-/// A filter policy wrapping another policy; extracting the user key from internal keys for all
-/// operations.
-/// A User Key is u8*.
-/// An Internal Key is u8* u8{8} (where the second part encodes a tag and a sequence number).
-#[derive(Clone)]
-pub struct InternalFilterPolicy<FP: FilterPolicy> {
-    internal: FP,
-}
-
-impl<FP: FilterPolicy> InternalFilterPolicy<FP> {
-    pub fn new(inner: FP) -> InternalFilterPolicy<FP> {
-        InternalFilterPolicy { internal: inner }
-    }
-}
-
-impl<FP: FilterPolicy> FilterPolicy for InternalFilterPolicy<FP> {
-    fn name(&self) -> &'static str {
-        self.internal.name()
-    }
-
-    fn create_filter(&self, keys: &[u8], key_offsets: &[usize]) -> Vec<u8> {
-        let mut mod_keys = Vec::with_capacity(keys.len() - key_offsets.len() * 8);
-        let mut mod_key_offsets = Vec::with_capacity(key_offsets.len());
-
-        offset_data_iterate(keys, key_offsets, |key| {
-            mod_key_offsets.push(mod_keys.len());
-            mod_keys.extend_from_slice(&key[0..key.len() - 8]);
-        });
-        self.internal.create_filter(&mod_keys, &mod_key_offsets)
-    }
-
-    fn key_may_match(&self, key: &[u8], filter: &[u8]) -> bool {
-        self.internal.key_may_match(&key[0..key.len() - 8], filter)
-    }
-}
-
 /// offset_data_iterate iterates over the entries in data that are indexed by the offsets given in
 /// offsets. This is e.g. the internal format of a FilterBlock.
 fn offset_data_iterate<F: FnMut(&[u8])>(data: &[u8], offsets: &[usize], mut f: F) {
