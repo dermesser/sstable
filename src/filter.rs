@@ -19,18 +19,6 @@ pub trait FilterPolicy {
 /// couldn't be cloned otherwise)
 pub type BoxedFilterPolicy = Rc<Box<dyn FilterPolicy>>;
 
-impl FilterPolicy for BoxedFilterPolicy {
-    fn name(&self) -> &'static str {
-        (**self).name()
-    }
-    fn create_filter(&self, keys: &[u8], key_offsets: &[usize]) -> Vec<u8> {
-        (**self).create_filter(keys, key_offsets)
-    }
-    fn key_may_match(&self, key: &[u8], filter: &[u8]) -> bool {
-        (**self).key_may_match(key, filter)
-    }
-}
-
 /// Used for tables that don't have filter blocks but need a type parameter.
 #[derive(Clone)]
 pub struct NoFilterPolicy;
