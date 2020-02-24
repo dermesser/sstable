@@ -15,8 +15,6 @@ use std::sync::Arc;
 
 use integer_encoding::FixedIntWriter;
 
-const LOCK_POISONED: &str = "Lock poisoned";
-
 /// Reads the table footer.
 fn read_footer(f: &dyn RandomAccess, size: usize) -> Result<Footer> {
     let mut buf = vec![0; table_builder::FULL_FOOTER_LENGTH];
@@ -55,7 +53,7 @@ impl Table {
 
         let filter_block_reader = Table::read_filter_block(&metaindex_block, file.as_ref(), &opt)?;
         let cache_id = {
-            let mut block_cache = opt.block_cache.write().expect(LOCK_POISONED);
+            let mut block_cache = opt.block_cache.write()?;
             block_cache.new_cache_id()
         };
 
@@ -113,7 +111,7 @@ impl Table {
     /// cache.
     fn read_block(&self, location: &BlockHandle) -> Result<Block> {
         let cachekey = self.block_cache_handle(location.offset());
-        let mut block_cache = self.opt.block_cache.write().expect(LOCK_POISONED);
+        let mut block_cache = self.opt.block_cache.write()?;
         if let Some(block) = block_cache.get(&cachekey) {
             return Ok(block.clone());
         }
@@ -347,6 +345,8 @@ mod tests {
     use crate::types::{current_key_val, SSIterator};
 
     use super::*;
+
+    const LOCK_POISONED: &str = "Lock poisoned";
 
     fn build_data() -> Vec<(&'static str, &'static str)> {
         vec![
