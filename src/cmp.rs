@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 /// Comparator trait, supporting types that can be nested (i.e., add additional functionality on
 /// top of an inner comparator)
-pub trait Cmp {
+pub trait Cmp: Sync + Send {
     /// Compare to byte strings, bytewise.
     fn cmp(&self, _: &[u8], _: &[u8]) -> Ordering;
 

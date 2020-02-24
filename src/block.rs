@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 
-use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::options::Options;
 use crate::types::SSIterator;
@@ -32,7 +32,7 @@ pub type BlockContents = Vec<u8>;
 /// N_RESTARTS contains the number of restarts.
 #[derive(Clone)]
 pub struct Block {
-    block: Rc<BlockContents>,
+    block: Arc<BlockContents>,
     opt: Options,
 }
 
@@ -59,14 +59,14 @@ impl Block {
         }
     }
 
-    pub fn contents(&self) -> Rc<BlockContents> {
+    pub fn contents(&self) -> Arc<BlockContents> {
         self.block.clone()
     }
 
     pub fn new(opt: Options, contents: BlockContents) -> Block {
         assert!(contents.len() > 4);
         Block {
-            block: Rc::new(contents),
+            block: Arc::new(contents),
             opt: opt,
         }
     }
@@ -76,8 +76,7 @@ impl Block {
 /// lifetime, as it uses a refcounted block underneath.
 pub struct BlockIter {
     /// The underlying block contents.
-    /// TODO: Maybe (probably...) this needs an Arc.
-    block: Rc<BlockContents>,
+    block: Arc<BlockContents>,
     opt: Options,
     /// offset of restarts area within the block.
     restarts_off: usize,

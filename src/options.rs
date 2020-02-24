@@ -5,7 +5,7 @@ use crate::filter;
 use crate::types::{share, Shared};
 
 use std::default::Default;
-use std::rc::Rc;
+use std::sync::Arc;
 
 const KB: usize = 1 << 10;
 const MB: usize = KB * KB;
@@ -33,7 +33,7 @@ pub fn int_to_compressiontype(i: u32) -> Option<CompressionType> {
 /// self-explanatory; the defaults are defined in the `Default` implementation.
 #[derive(Clone)]
 pub struct Options {
-    pub cmp: Rc<Box<dyn Cmp>>,
+    pub cmp: Arc<Box<dyn Cmp>>,
     pub write_buffer_size: usize,
     pub block_cache: Shared<Cache<Block>>,
     pub block_size: usize,
@@ -45,14 +45,14 @@ pub struct Options {
 impl Default for Options {
     fn default() -> Options {
         Options {
-            cmp: Rc::new(Box::new(DefaultCmp)),
+            cmp: Arc::new(Box::new(DefaultCmp)),
             write_buffer_size: WRITE_BUFFER_SIZE,
             // 2000 elements by default
             block_cache: share(Cache::new(BLOCK_CACHE_CAPACITY / BLOCK_MAX_SIZE)),
             block_size: BLOCK_MAX_SIZE,
             block_restart_interval: 16,
             compression_type: CompressionType::CompressionNone,
-            filter_policy: Rc::new(Box::new(filter::BloomPolicy::new(DEFAULT_BITS_PER_KEY))),
+            filter_policy: Arc::new(Box::new(filter::BloomPolicy::new(DEFAULT_BITS_PER_KEY))),
         }
     }
 }

@@ -9,7 +9,7 @@ use crate::types::mask_crc;
 
 use std::cmp::Ordering;
 use std::io::Write;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use crc::crc32;
 use crc::Hasher32;
@@ -95,7 +95,7 @@ pub struct TableBuilder<Dst: Write> {
 
 impl<Dst: Write> TableBuilder<Dst> {
     pub fn new_no_filter(mut opt: Options, dst: Dst) -> TableBuilder<Dst> {
-        opt.filter_policy = Rc::new(Box::new(NoFilterPolicy::new()));
+        opt.filter_policy = Arc::new(Box::new(NoFilterPolicy::new()));
         TableBuilder::new(opt, dst)
     }
 }
