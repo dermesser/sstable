@@ -152,7 +152,6 @@ impl<T> LRUList<T> {
     }
 }
 
-
 pub type CacheKey = [u8; 16];
 pub type CacheID = u64;
 type CacheEntry<T> = (T, LRUHandle<CacheKey>);
@@ -237,7 +236,6 @@ impl<T> Cache<T> {
         }
     }
 }
-
 
 // The compiler does not automatically derive Send and Sync for Cache because it contains
 // raw pointers.

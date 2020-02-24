@@ -421,10 +421,10 @@ mod tests {
 
         // index/metaindex blocks are not cached. That'd be a waste of memory.
         assert_eq!(opt.block_cache.read().expect(LOCK_POISONED).count(), 0);
-    
+
         iter.next();
         assert_eq!(opt.block_cache.read().expect(LOCK_POISONED).count(), 1);
-    
+
         // This may fail if block parameters or data change. In that case, adapt it.
         iter.next();
         iter.next();
@@ -618,7 +618,10 @@ mod tests {
             assert_eq!(Ok(Some(v)), r);
         }
 
-        assert_eq!(table.opt.block_cache.read().expect(LOCK_POISONED).count(), 3);
+        assert_eq!(
+            table.opt.block_cache.read().expect(LOCK_POISONED).count(),
+            3
+        );
 
         // test that filters work and don't return anything at all.
         assert!(table.get(b"aaa").unwrap().is_none());

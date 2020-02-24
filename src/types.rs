@@ -10,7 +10,7 @@ use std::os::windows::fs::FileExt;
 use std::sync::Arc;
 use std::sync::RwLock;
 
-pub trait RandomAccess : Send + Sync {
+pub trait RandomAccess: Send + Sync {
     fn read_at(&self, off: usize, dst: &mut [u8]) -> Result<usize>;
 }
 
