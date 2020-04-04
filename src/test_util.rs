@@ -48,6 +48,15 @@ impl<'a> SSIterator for TestSSIter<'a> {
             false
         }
     }
+
+    fn current_key(&self) -> Option<&[u8]> {
+        if self.init && self.ix < self.v.len() {
+            Some(self.v[self.ix].0)
+        } else {
+            None
+        }
+    }
+
     fn valid(&self) -> bool {
         self.init && self.ix < self.v.len()
     }
@@ -95,14 +104,18 @@ pub fn test_iterator_properties<It: SSIterator>(mut it: It) {
     assert!(it.advance());
     assert!(it.valid());
     let first = current_key_val(&it);
+    assert_eq!(first.as_ref().unwrap().0, it.current_key().unwrap());
     assert!(it.advance());
     let second = current_key_val(&it);
+    assert_eq!(second.as_ref().unwrap().0, it.current_key().unwrap());
     assert!(it.advance());
     let third = current_key_val(&it);
+    assert_eq!(third.as_ref().unwrap().0, it.current_key().unwrap());
     // fourth (last) element
     assert!(it.advance());
     assert!(it.valid());
     let fourth = current_key_val(&it);
+    assert_eq!(fourth.as_ref().unwrap().0, it.current_key().unwrap());
     // past end is invalid
     assert!(!it.advance());
     assert!(!it.valid());

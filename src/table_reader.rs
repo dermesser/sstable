@@ -335,6 +335,14 @@ impl SSIterator for TableIterator {
             false
         }
     }
+
+    fn current_key(&self) -> Option<&[u8]> {
+        if let Some(ref cb) = self.current_block {
+            cb.current_key()
+        } else {
+            None
+        }
+    }
 }
 
 #[cfg(test)]
