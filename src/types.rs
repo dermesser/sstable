@@ -69,6 +69,8 @@ pub trait SSIterator {
     fn advance(&mut self) -> bool;
     /// Return the current item (i.e. the item most recently returned by `next()`).
     fn current(&self, key: &mut Vec<u8>, val: &mut Vec<u8>) -> bool;
+    /// Return a reference to the key of the current item (i.e. the item most recently returned by `next()`).
+    fn current_key(&self) -> Option<&[u8]>;
     /// Seek the iterator to `key` or the next bigger key. If the seek is invalid (past last
     /// element, or before first element), the iterator is `reset()` and not valid.
     fn seek(&mut self, key: &[u8]);
@@ -123,6 +125,9 @@ impl SSIterator for Box<dyn SSIterator> {
     }
     fn current(&self, key: &mut Vec<u8>, val: &mut Vec<u8>) -> bool {
         self.as_ref().current(key, val)
+    }
+    fn current_key(&self) -> Option<&[u8]> {
+        self.as_ref().current_key()
     }
     fn seek(&mut self, key: &[u8]) {
         self.as_mut().seek(key)

@@ -297,6 +297,14 @@ impl SSIterator for BlockIter {
             false
         }
     }
+
+    fn current_key(&self) -> Option<&[u8]> {
+        if self.valid() {
+            Some(&self.key)
+        } else {
+            None
+        }
+    }
 }
 
 #[cfg(test)]
