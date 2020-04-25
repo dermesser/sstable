@@ -22,7 +22,7 @@ pub use crate::error::{Result, Status, StatusCode};
 pub use crate::options::{CompressionType, Options};
 pub use crate::table_builder::TableBuilder;
 pub use crate::table_reader::{Table, TableIterator};
-pub use crate::types::{current_key_val, SSIterator};
+pub use crate::types::{current_key_val, RandomAccess, SSIterator};
 
 #[cfg(test)]
 mod test_util;
