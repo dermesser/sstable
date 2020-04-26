@@ -44,21 +44,16 @@ pub fn read_table_block(
     // The block is denoted by offset and length in BlockHandle. A block in an encoded
     // table is followed by 1B compression type and 4B checksum.
     // The checksum refers to the compressed contents.
-    let buf = read_bytes(f, location)?;
-    let compress = read_bytes(
-        f,
-        &BlockHandle::new(
-            location.offset() + location.size(),
-            table_builder::TABLE_BLOCK_COMPRESS_LEN,
-        ),
-    )?;
-    let cksum = read_bytes(
-        f,
-        &BlockHandle::new(
-            location.offset() + location.size() + table_builder::TABLE_BLOCK_COMPRESS_LEN,
-            table_builder::TABLE_BLOCK_CKSUM_LEN,
-        ),
-    )?;
+
+    let block_data_size = location.size();
+    let location = BlockHandle::new(
+        location.offset(),
+        block_data_size + table_builder::TABLE_BLOCK_CKSUM_LEN + table_builder::TABLE_BLOCK_COMPRESS_LEN,
+    );
+    let mut buf = read_bytes(f, &location)?;
+
+    let mut compress = buf.split_off(block_data_size);
+    let cksum = compress.split_off(table_builder::TABLE_BLOCK_COMPRESS_LEN);
 
     if !verify_table_block(&buf, compress[0], unmask_crc(u32::decode_fixed(&cksum))) {
         return err(
