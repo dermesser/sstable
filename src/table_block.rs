@@ -48,7 +48,9 @@ pub fn read_table_block(
     let block_data_size = location.size();
     let location = BlockHandle::new(
         location.offset(),
-        block_data_size + table_builder::TABLE_BLOCK_CKSUM_LEN + table_builder::TABLE_BLOCK_COMPRESS_LEN,
+        block_data_size
+            + table_builder::TABLE_BLOCK_CKSUM_LEN
+            + table_builder::TABLE_BLOCK_COMPRESS_LEN,
     );
     let mut buf = read_bytes(f, &location)?;
 
