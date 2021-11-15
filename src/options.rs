@@ -44,7 +44,8 @@ pub struct Options {
 
 impl Options {
     /// Returns Options with a custom block cache capacity.
-    /// The capacity is given as number of items in the cache.
+    /// The capacity is given as number of items in the cache
+    /// and the minimal allowed capacity is 1.
     pub fn with_cache_capacity(mut self, capacity: usize) -> Options {
         self.block_cache = share(Cache::new(capacity));
         self
@@ -65,3 +66,4 @@ impl Default for Options {
         }
     }
 }
+

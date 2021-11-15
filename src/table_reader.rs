@@ -442,6 +442,27 @@ mod tests {
     }
 
     #[test]
+    fn test_table_block_tiny_cache() {
+        let (src, size) = build_table(build_data());
+        // Create a table with no block cache
+        let mut opt = Options::default().with_cache_capacity(1);
+        opt.block_size = 32;
+
+        let table = Table::new(opt.clone(), wrap_buffer(src), size).unwrap();
+        let mut iter = table.iter();
+
+        // index/metaindex blocks are not cached. That'd be a waste of memory.
+        assert_eq!(opt.block_cache.read().expect(LOCK_POISONED).count(), 0);
+
+        // We should have at most one item in the cache
+        iter.next();
+        assert_eq!(opt.block_cache.read().expect(LOCK_POISONED).count(), 1);
+        iter.next();
+        assert_eq!(opt.block_cache.read().expect(LOCK_POISONED).count(), 1);
+
+    }
+
+    #[test]
     fn test_table_iterator_fwd_bwd() {
         let (src, size) = build_table(build_data());
         let data = build_data();
