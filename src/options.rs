@@ -42,6 +42,16 @@ pub struct Options {
     pub filter_policy: filter::BoxedFilterPolicy,
 }
 
+impl Options {
+    /// Configure to use a custom block cache capacity.
+    /// The capacity is given as number of items in the cache
+    /// and the minimal allowed capacity is 1.
+    pub fn with_cache_capacity(mut self, capacity: usize) -> Options {
+        self.block_cache = share(Cache::new(capacity));
+        self
+    }
+}
+
 impl Default for Options {
     fn default() -> Options {
         Options {
@@ -56,3 +66,4 @@ impl Default for Options {
         }
     }
 }
+
