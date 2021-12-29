@@ -143,6 +143,15 @@ impl SSIterator for Box<dyn SSIterator> {
     }
 }
 
+// Allow interface to iterator.
+impl Iterator for dyn SSIterator {
+    type Item = (Vec<u8>, Vec<u8>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next()
+    }
+}
+
 const MASK_DELTA: u32 = 0xa282ead8;
 
 pub fn mask_crc(c: u32) -> u32 {
