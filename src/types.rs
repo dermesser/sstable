@@ -143,6 +143,15 @@ impl SSIterator for Box<dyn SSIterator> {
     }
 }
 
+// Allow interface to iterator.
+impl Iterator for dyn SSIterator {
+    type Item = (Vec<u8>, Vec<u8>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next()
+    }
+}
+
 impl Iterator for Box<dyn SSIterator> {
     type Item = (Vec<u8>, Vec<u8>);
 
