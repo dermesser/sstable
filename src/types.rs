@@ -152,6 +152,14 @@ impl Iterator for dyn SSIterator {
     }
 }
 
+impl Iterator for Box<dyn SSIterator> {
+    type Item = (Vec<u8>, Vec<u8>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        SSIterator::next(&mut *self)
+    }
+}
+
 const MASK_DELTA: u32 = 0xa282ead8;
 
 pub fn mask_crc(c: u32) -> u32 {
