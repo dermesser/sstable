@@ -11,8 +11,8 @@ documentation = "https://docs.rs/sstable"
 edition = "2018"
 
 [dependencies]
-crc = "1"
-integer-encoding = "1"
+crc = "3"
+integer-encoding = "3"
 snap = "1"
 
 [dev-dependencies]

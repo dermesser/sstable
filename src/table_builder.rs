@@ -11,8 +11,7 @@ use std::cmp::Ordering;
 use std::io::Write;
 use std::sync::Arc;
 
-use crc::crc32;
-use crc::Hasher32;
+use crc::{Crc, CRC_32_ISCSI};
 use integer_encoding::FixedIntWriter;
 use snap::raw::Encoder;
 
@@ -84,6 +83,7 @@ pub struct TableBuilder<Dst: Write> {
     opt: Options,
     dst: Dst,
 
+    crc: Crc<u32>,
     offset: usize,
     num_entries: usize,
     prev_block_last_key: Vec<u8>,
@@ -108,6 +108,7 @@ impl<Dst: Write> TableBuilder<Dst> {
         TableBuilder {
             opt: opt.clone(),
             dst: dst,
+            crc: Crc::<u32>::new(&CRC_32_ISCSI),
             offset: 0,
             prev_block_last_key: vec![],
             num_entries: 0,
@@ -207,14 +208,14 @@ impl<Dst: Write> TableBuilder<Dst> {
             data = encoder.compress_vec(&data)?;
         }
 
-        let mut digest = crc32::Digest::new(crc32::CASTAGNOLI);
+        let mut digest = self.crc.digest();
 
-        digest.write(&data);
-        digest.write(&[ctype as u8; TABLE_BLOCK_COMPRESS_LEN]);
+        digest.update(&data);
+        digest.update(&[ctype as u8; TABLE_BLOCK_COMPRESS_LEN]);
 
         self.dst.write(&data)?;
         self.dst.write(&[ctype as u8; TABLE_BLOCK_COMPRESS_LEN])?;
-        self.dst.write_fixedint(mask_crc(digest.sum32()))?;
+        self.dst.write_fixedint(mask_crc(digest.finalize()))?;
 
         let handle = BlockHandle::new(self.offset, data.len());
         self.offset += data.len() + TABLE_BLOCK_COMPRESS_LEN + TABLE_BLOCK_CKSUM_LEN;

@@ -132,13 +132,14 @@ impl BlockIter {
     /// Advances self.offset to the beginning of the next entry.
     fn parse_entry_and_advance(&mut self) -> (usize, usize, usize, usize) {
         let mut i = 0;
-        let (shared, sharedlen) = usize::decode_var(&self.block[self.offset..]);
+        let (shared, sharedlen) = usize::decode_var(&self.block[self.offset..]).unwrap();
         i += sharedlen;
 
-        let (non_shared, non_sharedlen) = usize::decode_var(&self.block[self.offset + i..]);
+        let (non_shared, non_sharedlen) =
+            usize::decode_var(&self.block[self.offset + i..]).unwrap();
         i += non_sharedlen;
 
-        let (valsize, valsizelen) = usize::decode_var(&self.block[self.offset + i..]);
+        let (valsize, valsizelen) = usize::decode_var(&self.block[self.offset + i..]).unwrap();
         i += valsizelen;
 
         self.val_offset = self.offset + i + non_shared;
