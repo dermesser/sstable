@@ -1,7 +1,7 @@
 [package]
 name = "sstable"
 description = "Sorted String Tables, an on-disk format for storing immutable maps consisting of string,string pairs, and retrieving values by key efficiently. This crate also features bloom filters, checksums and skipping bad blocks. It is based on the code implemented for the rusty_leveldb crate."
-version = "0.10.0"
+version = "0.11.0"
 readme = "README.md"
 keywords = ["sstable", "database"]
 repository = "https://github.com/dermesser/sstable"
@@ -11,9 +11,9 @@ documentation = "https://docs.rs/sstable"
 edition = "2018"
 
 [dependencies]
-crc = "1.2"
-integer-encoding = "1.0"
-snap = "0.2"
+crc = "1"
+integer-encoding = "1"
+snap = "1"
 
 [dev-dependencies]
 time-test = "0.2"

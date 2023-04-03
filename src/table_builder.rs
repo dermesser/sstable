@@ -14,7 +14,7 @@ use std::sync::Arc;
 use crc::crc32;
 use crc::Hasher32;
 use integer_encoding::FixedIntWriter;
-use snap::Encoder;
+use snap::raw::Encoder;
 
 pub const FOOTER_LENGTH: usize = 40;
 pub const FULL_FOOTER_LENGTH: usize = FOOTER_LENGTH + 8;

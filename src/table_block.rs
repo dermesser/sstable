@@ -9,7 +9,7 @@ use crate::types::{unmask_crc, RandomAccess};
 
 use crc::crc32::{self, Hasher32};
 use integer_encoding::FixedInt;
-use snap::Decoder;
+use snap::raw::Decoder;
 
 /// Reads the data for the specified block handle from a file.
 fn read_bytes(f: &dyn RandomAccess, location: &BlockHandle) -> Result<Vec<u8>> {
