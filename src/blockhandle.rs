@@ -14,8 +14,8 @@ impl BlockHandle {
     /// Decodes a block handle from `from` and returns a block handle
     /// together with how many bytes were read from the slice.
     pub fn decode(from: &[u8]) -> (BlockHandle, usize) {
-        let (off, offsize) = usize::decode_var(from);
-        let (sz, szsize) = usize::decode_var(&from[offsize..]);
+        let (off, offsize) = usize::decode_var(from).unwrap();
+        let (sz, szsize) = usize::decode_var(&from[offsize..]).unwrap();
 
         (
             BlockHandle {

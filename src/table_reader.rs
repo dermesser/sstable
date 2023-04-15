@@ -26,7 +26,6 @@ fn read_footer(f: &dyn RandomAccess, size: usize) -> Result<Footer> {
 #[derive(Clone)]
 pub struct Table {
     file: Arc<Box<dyn RandomAccess>>,
-    file_size: usize,
     cache_id: cache::CacheID,
 
     opt: Options,
@@ -59,7 +58,6 @@ impl Table {
 
         Ok(Table {
             file: Arc::new(file),
-            file_size: size,
             cache_id: cache_id,
             opt: opt,
             footer: footer,
@@ -459,7 +457,6 @@ mod tests {
         assert_eq!(opt.block_cache.read().expect(LOCK_POISONED).count(), 1);
         iter.next();
         assert_eq!(opt.block_cache.read().expect(LOCK_POISONED).count(), 1);
-
     }
 
     #[test]

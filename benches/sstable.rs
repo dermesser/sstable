@@ -6,7 +6,7 @@ use std::fs;
 use bencher::Bencher;
 use rand::random;
 
-use sstable::{SSIterator, Table, TableBuilder, TableIterator};
+use sstable::{SSIterator, Table, TableBuilder};
 
 fn random_string(n: usize) -> String {
     let mut v = vec![0; n];
@@ -28,7 +28,7 @@ fn write_tmp_table(entries: usize) {
         .write(true)
         .open("/tmp/.sstabletestfile")
         .unwrap();
-    let mut opt = sstable::Options::default();
+    let opt = sstable::Options::default();
     let mut tb = TableBuilder::new(opt, dst);
 
     for (k, v) in v {
@@ -38,13 +38,13 @@ fn write_tmp_table(entries: usize) {
 }
 
 fn rm_tmp_table() {
-    fs::remove_file("/tmp/.sstabletestfile");
+    fs::remove_file("/tmp/.sstabletestfile").ok();
 }
 
 fn bench_write(b: &mut Bencher) {
-    let N = 100000;
+    let n = 100000;
     b.iter(|| {
-        write_tmp_table(N);
+        write_tmp_table(n);
         rm_tmp_table();
     });
 }
@@ -66,6 +66,8 @@ fn bench_read(b: &mut Bencher) {
             count += k.len() + v.len();
             entries += 1;
         }
+        assert_eq!(entries, 100000);
+        assert_eq!(count, 3200000);
     });
 }
 

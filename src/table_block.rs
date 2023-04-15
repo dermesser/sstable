@@ -7,9 +7,9 @@ use crate::options::{self, CompressionType, Options};
 use crate::table_builder;
 use crate::types::{unmask_crc, RandomAccess};
 
-use crc::crc32::{self, Hasher32};
+use crc::{Crc, CRC_32_ISCSI};
 use integer_encoding::FixedInt;
-use snap::Decoder;
+use snap::raw::Decoder;
 
 /// Reads the data for the specified block handle from a file.
 fn read_bytes(f: &dyn RandomAccess, location: &BlockHandle) -> Result<Vec<u8>> {
@@ -82,8 +82,9 @@ pub fn read_table_block(
 
 /// Verify checksum of block
 fn verify_table_block(data: &[u8], compression: u8, want: u32) -> bool {
-    let mut digest = crc32::Digest::new(crc32::CASTAGNOLI);
-    digest.write(data);
-    digest.write(&[compression; 1]);
-    digest.sum32() == want
+    let crc = Crc::<u32>::new(&CRC_32_ISCSI);
+    let mut digest = crc.digest();
+    digest.update(data);
+    digest.update(&[compression; 1]);
+    digest.finalize() == want
 }
