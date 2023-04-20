@@ -123,8 +123,10 @@ impl<Dst: Write> TableBuilder<Dst> {
         self.num_entries
     }
 
+    /// Returns the estimated size of the SSTable in bytes. It includes already written
+    /// and outstanding bytes.
     #[allow(unused)]
-    fn size_estimate(&self) -> usize {
+    pub fn size_estimate(&self) -> usize {
         let mut size = 0;
         size += self
             .data_block
